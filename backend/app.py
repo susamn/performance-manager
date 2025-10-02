@@ -119,7 +119,7 @@ class EventManager:
         """Get directory path for a performance within an event"""
         return self.get_event_dir(event_id) / performance_id
 
-    def create_performance(self, event_id: str, name: str, performer: str = '', perf_type: str = 'Song', mode: str = 'Solo') -> Dict[str, Any]:
+    def create_performance(self, event_id: str, name: str, performer: str = '', perf_type: str = 'Song', mode: str = 'Solo', expected_duration: Optional[int] = None) -> Dict[str, Any]:
         """Create a new performance within an event"""
         event = self.get_event(event_id)
         if not event:
@@ -142,6 +142,9 @@ class EventManager:
             'createdAt': datetime.now().isoformat(),
             'order': len(performances)
         }
+
+        if expected_duration is not None:
+            performance['expectedDuration'] = expected_duration
 
         performances.append(performance)
         self.save_event_performances(event_id, performances)
@@ -253,7 +256,7 @@ class EventManager:
         with open(breaks_file, 'w') as f:
             json.dump(breaks, f, indent=2)
 
-    def create_break(self, event_id: str, name: str, break_type: str) -> Optional[Dict[str, Any]]:
+    def create_break(self, event_id: str, name: str, break_type: str, expected_duration: Optional[int] = None) -> Optional[Dict[str, Any]]:
         """Create a new break within an event"""
         breaks = self.load_event_breaks(event_id)
 
@@ -266,6 +269,9 @@ class EventManager:
             'createdAt': datetime.now().isoformat(),
             'order': len(breaks)
         }
+
+        if expected_duration is not None:
+            break_obj['expectedDuration'] = expected_duration
 
         breaks.append(break_obj)
         self.save_event_breaks(event_id, breaks)
@@ -362,12 +368,21 @@ def create_event_performance(event_id: str):
         performer = request.form.get('performer', '')
         perf_type = request.form.get('type', 'Song')
         mode = request.form.get('mode', 'Solo')
+        expected_duration = request.form.get('expectedDuration')
 
         if not name:
             return jsonify({'error': 'Name is required'}), 400
 
+        # Convert expectedDuration to int if provided
+        duration = None
+        if expected_duration and expected_duration.strip():
+            try:
+                duration = int(expected_duration)
+            except ValueError:
+                pass
+
         # Create performance
-        performance = em.create_performance(event_id, name, performer, perf_type, mode)
+        performance = em.create_performance(event_id, name, performer, perf_type, mode, duration)
         if not performance:
             return jsonify({'error': 'Failed to create performance'}), 500
 
@@ -406,7 +421,8 @@ def create_event_performance(event_id: str):
             data['name'],
             data.get('performer', ''),
             data.get('type', 'Song'),
-            data.get('mode', 'Solo')
+            data.get('mode', 'Solo'),
+            data.get('expectedDuration')
         )
         if performance:
             return jsonify(performance), 201
@@ -601,7 +617,7 @@ def create_event_break(event_id: str):
     if data['type'] not in valid_types:
         return jsonify({'error': f'Invalid break type. Must be one of: {", ".join(valid_types)}'}), 400
 
-    break_obj = em.create_break(event_id, data['name'], data['type'])
+    break_obj = em.create_break(event_id, data['name'], data['type'], data.get('expectedDuration'))
     if break_obj:
         return jsonify(break_obj), 201
 

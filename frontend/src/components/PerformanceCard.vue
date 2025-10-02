@@ -36,17 +36,17 @@
         <div class="flex items-center space-x-1 ml-4">
           <!-- Selection Button -->
           <button
-            @click.stop="!disabled && $emit('select', performance)"
-            :disabled="disabled"
+            @click.stop="!disabled && !performance.isDone && $emit('select', performance)"
+            :disabled="disabled || performance.isDone"
             :class="[
               'px-3 py-1 text-xs rounded border-2 transition-all font-medium',
-              disabled
+              disabled || performance.isDone
                 ? 'bg-gray-700/30 border-gray-600 text-gray-500 cursor-not-allowed'
                 : isSelected
                   ? 'bg-player-accent/20 border-player-accent text-player-accent hover:bg-player-accent/30 shadow-md'
                   : 'bg-gray-600/20 border-gray-500 text-gray-300 hover:bg-gray-600/30 hover:border-gray-400'
             ]"
-            :title="disabled ? 'Another performance is selected' : isSelected ? 'Deselect performance' : 'Select performance'"
+            :title="performance.isDone ? 'Completed performances cannot be selected' : disabled ? 'Another performance is selected' : isSelected ? 'Deselect performance' : 'Select performance'"
           >
             {{ isSelected ? 'Selected' : 'Select' }}
           </button>

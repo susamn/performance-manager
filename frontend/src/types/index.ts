@@ -17,6 +17,7 @@ export interface Performance {
   isDone: boolean
   createdAt: string
   order: number
+  expectedDuration?: number // in minutes
 }
 
 export interface Break {
@@ -26,6 +27,7 @@ export interface Break {
   isDone: boolean
   createdAt: string
   order: number
+  expectedDuration?: number // in minutes
 }
 
 export interface Event {

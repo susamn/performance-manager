@@ -17,23 +17,39 @@
         />
       </div>
 
-      <div>
-        <label for="breakType" class="block text-sm font-medium text-gray-300 mb-2">
-          Type *
-        </label>
-        <select
-          id="breakType"
-          v-model="breakType"
-          required
-          class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white"
-        >
-          <option value="Lunch">Lunch</option>
-          <option value="Dinner">Dinner</option>
-          <option value="Broadcast">Broadcast</option>
-          <option value="Announcement">Announcement</option>
-          <option value="Appearence">Appearence</option>
-          <option value="Special Show">Special Show</option>
-        </select>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label for="breakType" class="block text-sm font-medium text-gray-300 mb-2">
+            Type *
+          </label>
+          <select
+            id="breakType"
+            v-model="breakType"
+            required
+            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white"
+          >
+            <option value="Lunch">Lunch</option>
+            <option value="Dinner">Dinner</option>
+            <option value="Broadcast">Broadcast</option>
+            <option value="Announcement">Announcement</option>
+            <option value="Appearence">Appearence</option>
+            <option value="Special Show">Special Show</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="expectedDuration" class="block text-sm font-medium text-gray-300 mb-2">
+            Duration (min)
+          </label>
+          <input
+            id="expectedDuration"
+            v-model.number="expectedDuration"
+            type="number"
+            min="1"
+            placeholder="e.g. 30"
+            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white"
+          />
+        </div>
       </div>
 
       <button
@@ -65,6 +81,7 @@ const emit = defineEmits<{
 
 const breakName = ref('')
 const breakType = ref<Break['type']>('Lunch')
+const expectedDuration = ref<number | undefined>(undefined)
 const isSubmitting = ref(false)
 const error = ref('')
 
@@ -85,7 +102,8 @@ async function handleSubmit() {
       },
       body: JSON.stringify({
         name: breakName.value.trim(),
-        type: breakType.value
+        type: breakType.value,
+        ...(expectedDuration.value && expectedDuration.value > 0 && { expectedDuration: expectedDuration.value })
       })
     })
 
@@ -100,6 +118,7 @@ async function handleSubmit() {
     // Reset form
     breakName.value = ''
     breakType.value = 'Lunch'
+    expectedDuration.value = undefined
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to create break'
     console.error('Error creating break:', err)

@@ -31,7 +31,7 @@
         />
       </div>
 
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-3 gap-3">
         <div>
           <label for="performanceType" class="block text-sm font-medium text-gray-300 mb-2">
             Type *
@@ -62,6 +62,20 @@
             <option value="Duet">Duet</option>
             <option value="Group">Group</option>
           </select>
+        </div>
+
+        <div>
+          <label for="expectedDuration" class="block text-sm font-medium text-gray-300 mb-2">
+            Duration
+          </label>
+          <input
+            id="expectedDuration"
+            v-model.number="expectedDuration"
+            type="number"
+            min="1"
+            placeholder="minutes"
+            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white"
+          />
         </div>
       </div>
 
@@ -94,7 +108,7 @@
           :disabled="isCreating || !performanceName.trim() || !performerName.trim()"
           class="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {{ isCreating ? 'Creating...' : 'Create Performance' }}
+          {{ isCreating ? 'Creating...' : 'Create' }}
         </button>
 
         <button
@@ -128,6 +142,7 @@ const performanceName = ref('')
 const performerName = ref('')
 const performanceType = ref<'Song' | 'Dance' | 'Recitation'>('Song')
 const performanceMode = ref<'Solo' | 'Duet' | 'Group'>('Solo')
+const expectedDuration = ref<number | undefined>(undefined)
 const selectedFiles = ref<File[]>([])
 const isCreating = ref(false)
 
@@ -158,6 +173,10 @@ async function handleSubmit() {
     formData.append('type', performanceType.value)
     formData.append('mode', performanceMode.value)
 
+    if (expectedDuration.value && expectedDuration.value > 0) {
+      formData.append('expectedDuration', expectedDuration.value.toString())
+    }
+
     selectedFiles.value.forEach((file, index) => {
       formData.append('files', file)
     })
@@ -187,6 +206,7 @@ function clearForm() {
   performerName.value = ''
   performanceType.value = 'Song'
   performanceMode.value = 'Solo'
+  expectedDuration.value = undefined
   selectedFiles.value = []
   const fileInput = document.getElementById('audioFiles') as HTMLInputElement
   if (fileInput) {
