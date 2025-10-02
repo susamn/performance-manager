@@ -1,0 +1,131 @@
+<template>
+  <div
+    class="performance-card"
+    :class="{
+      'selected': isSelected,
+      'done': performance.isDone
+    }"
+  >
+    <!-- Main Performance Card View -->
+    <div class="performance-card-content">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-3 flex-1 min-w-0">
+          <div
+            class="drag-handle p-2 text-gray-400 hover:text-gray-300 cursor-grab active:cursor-grabbing flex-shrink-0"
+            @click.stop
+            title="Drag to reorder"
+          >
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M9,3H11V5H9V3M13,3H15V5H13V3M9,7H11V9H9V7M13,7H15V9H13V7M9,11H11V13H9V11M13,11H15V13H13V11M9,15H11V17H9V15M13,15H15V17H13V15M9,19H11V21H9V19M13,19H15V21H13V19Z" />
+            </svg>
+          </div>
+
+          <div class="flex-1 min-w-0 cursor-pointer" @click="$emit('select', performance)">
+            <h4 class="text-base font-semibold text-white truncate">{{ performance.name }}</h4>
+            <p class="text-sm text-gray-300 truncate">by {{ performance.performer }}</p>
+            <p class="text-xs text-gray-400">
+              {{ performance.type }} • {{ performance.mode }} •
+              {{ performance.tracks.length === 0 ? 'No tracks' : `${performance.tracks.length} track${performance.tracks.length !== 1 ? 's' : ''}` }}
+              • {{ formatDate(performance.createdAt) }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center space-x-1 ml-4">
+          <button
+            @click.stop="$emit('toggleDone', performance)"
+            :class="[
+              'px-2 py-1 text-xs rounded border transition-colors',
+              performance.isDone
+                ? 'bg-green-600/20 border-green-500 text-green-300 hover:bg-green-600/30'
+                : 'bg-gray-600/20 border-gray-500 text-gray-300 hover:bg-gray-600/30'
+            ]"
+            :title="performance.isDone ? 'Mark as incomplete' : 'Mark as completed'"
+          >
+            {{ performance.isDone ? '✓' : '○' }}
+          </button>
+
+          <button
+            @click.stop="$emit('delete', performance)"
+            class="p-1 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors"
+          >
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Expanded Track List (shown when selected) -->
+      <div v-if="isSelected && performance.tracks.length > 0" class="mt-4 pt-4 border-t border-gray-600">
+        <div class="text-sm text-gray-400 mb-2">Tracks:</div>
+        <div class="max-h-40 overflow-y-auto space-y-1">
+          <div
+            v-for="track in performance.tracks"
+            :key="track.id"
+            class="flex items-center justify-between p-2 bg-gray-700/50 rounded hover:bg-gray-700 transition-colors"
+            :class="{ 'opacity-60': track.isCompleted }"
+          >
+            <div class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer" @click.stop="$emit('trackSelected', track)">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-white truncate" :class="{ 'line-through': track.isCompleted }">{{ track.filename }}</p>
+                <p class="text-xs text-gray-400">{{ track.performer }}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                @click.stop="$emit('toggleTrackCompletion', track)"
+                :class="[
+                  'px-2 py-1 text-xs rounded border transition-colors',
+                  track.isCompleted
+                    ? 'bg-green-600/20 border-green-500 text-green-300 hover:bg-green-600/30'
+                    : 'bg-gray-600/20 border-gray-500 text-gray-300 hover:bg-gray-600/30'
+                ]"
+                :title="track.isCompleted ? 'Mark as incomplete' : 'Mark as completed'"
+              >
+                {{ track.isCompleted ? '✓' : '○' }}
+              </button>
+              <button
+                @click.stop="$emit('trackSelected', track)"
+                class="p-1 text-player-accent hover:text-green-400 transition-colors"
+                title="Play track"
+              >
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8,5.14V19.14L19,12.14L8,5.14Z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State for selected card with no tracks -->
+      <div v-else-if="isSelected && performance.tracks.length === 0" class="mt-4 pt-4 border-t border-gray-600 text-center py-4 text-gray-500 text-sm">
+        No tracks added yet
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { Performance, Track } from '@/types'
+
+defineProps<{
+  performance: Performance
+  isSelected: boolean
+}>()
+
+defineEmits<{
+  select: [performance: Performance]
+  toggleDone: [performance: Performance]
+  delete: [performance: Performance]
+  trackSelected: [track: Track]
+  toggleTrackCompletion: [track: Track]
+}>()
+
+function formatDate(dateString: string): string {
+  const date = new Date(dateString)
+  return date.toLocaleDateString()
+}
+</script>

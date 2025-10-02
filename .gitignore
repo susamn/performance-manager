@@ -1,0 +1,131 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+
+# Build outputs
+frontend/dist/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Runtime
+*.pid
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Performance Manager data (don't commit user data)
+.config/
+
+# Claude Code specific
+.claude/
+
+# Audio files (large media files)
+*.mp3
+*.mp4
+*.aac
+*.m4a
+*.wav
+*.flac
+*.ogg
+*.wma
+
+# User uploads and data directories
+backend/uploads/
+backend/data/
+/data/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Additional Python patterns
+*.py[cod]
+*$py.class
+*.so
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg
+MANIFEST
+
+# Additional Node.js patterns
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.yarn-integrity
+*.tgz
+.yarn/
+.pnp.*
+
+# Additional IDE patterns
+*~
+*.swp
+*.swo
+
+# macOS additional
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.fseventsd
+.TemporaryItems
+
+# Windows additional
+ehthumbs.db
+Desktop.ini
+
+# Cache directories
+.cache/
+.parcel-cache/
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# TypeScript
+*.tsbuildinfo
+
+# Optional cache directories
+.npm
+.eslintcache
+.stylelintcache

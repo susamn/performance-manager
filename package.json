@@ -1,0 +1,30 @@
+{
+  "name": "performance-manager",
+  "version": "1.0.0",
+  "description": "Complete web application for managing performances at cultural events",
+  "scripts": {
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "test": "cd frontend && npm test",
+    "server": "cd backend && python app.py",
+    "install-deps": "cd frontend && npm install && cd ../backend && pip install -r requirements.txt",
+    "start": "./quick-start.sh start",
+    "stop": "./quick-start.sh stop",
+    "restart": "./quick-start.sh restart",
+    "status": "./quick-start.sh status",
+    "logs": "./quick-start.sh logs"
+  },
+  "keywords": [
+    "performance",
+    "music",
+    "media-player",
+    "vue",
+    "flask",
+    "cultural-events"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0",
+    "python": ">=3.8.0"
+  }
+}
