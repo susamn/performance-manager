@@ -7,6 +7,15 @@
       <p class="text-sm text-gray-400">Now Playing:</p>
       <p class="text-white font-medium truncate">{{ currentTrack.filename }}</p>
       <p class="text-sm text-gray-400">{{ currentTrack.performer }}</p>
+
+      <!-- Loading indicator -->
+      <div v-if="isLoading" class="mt-2 flex items-center gap-2">
+        <div class="w-4 h-4 border-2 border-player-accent border-t-transparent rounded-full animate-spin"></div>
+        <span class="text-xs text-gray-400">Preparing stream... {{ formattedLoadProgress }}</span>
+      </div>
+      <div v-else class="mt-1">
+        <span class="text-xs text-green-400">✓ Ready to stream</span>
+      </div>
     </div>
 
     <!-- Seekbar -->
@@ -34,7 +43,7 @@
       <button
         @click="rewind"
         class="p-2 bg-gray-600 hover:bg-gray-500 rounded-full transition-colors"
-        :disabled="!currentTrack"
+        :disabled="!currentTrack || isLoading"
       >
         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
           <path d="M12,5V1L7,6L12,11V7A6,6 0 0,1 18,13A6,6 0 0,1 12,19A6,6 0 0,1 6,13H4A8,8 0 0,0 12,21A8,8 0 0,0 20,13A8,8 0 0,0 12,5Z" />
@@ -44,7 +53,7 @@
       <button
         @click="togglePlayPause"
         class="p-3 bg-player-accent hover:bg-green-400 text-black rounded-full transition-colors"
-        :disabled="!currentTrack"
+        :disabled="!currentTrack || isLoading"
       >
         <svg v-if="!isPlaying" class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
           <path d="M8,5.14V19.14L19,12.14L8,5.14Z" />
@@ -57,7 +66,7 @@
       <button
         @click="stop"
         class="p-2 bg-gray-600 hover:bg-gray-500 rounded-full transition-colors"
-        :disabled="!currentTrack"
+        :disabled="!currentTrack || isLoading"
       >
         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
           <path d="M18,18H6V6H18V18Z" />
@@ -68,6 +77,7 @@
     <!-- Instructions -->
     <div class="mt-4 text-xs text-gray-500 text-center">
       <p>Space: Play/Pause • Space x2: Stop & Reset</p>
+      <p class="mt-1 text-green-400">🎵 Streaming enabled - No full downloads!</p>
     </div>
   </div>
 </template>
@@ -80,9 +90,11 @@ const playerStore = usePlayerStore()
 
 const currentTrack = computed(() => playerStore.currentTrack)
 const isPlaying = computed(() => playerStore.playState.isPlaying)
+const isLoading = computed(() => playerStore.isLoading)
 const progress = computed(() => playerStore.progress)
 const formattedCurrentTime = computed(() => playerStore.formattedCurrentTime)
 const formattedDuration = computed(() => playerStore.formattedDuration)
+const formattedLoadProgress = computed(() => playerStore.formattedLoadProgress)
 
 function togglePlayPause() {
   playerStore.togglePlayPause()

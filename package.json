@@ -26,5 +26,9 @@
   "engines": {
     "node": ">=16.0.0",
     "python": ">=3.8.0"
+  },
+  "dependencies": {
+    "@types/howler": "^2.2.12",
+    "howler": "^2.2.4"
   }
 }
