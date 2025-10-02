@@ -141,6 +141,7 @@
                 v-if="item.type === 'performance'"
                 :performance="getPerformanceFromItem(item)"
                 :is-selected="selectedPerformanceId === item.id"
+                :disabled="!!(selectedPerformanceId && selectedPerformanceId !== item.id)"
                 @select="selectPerformance"
                 @toggle-done="toggleDone"
                 @delete="deletePerformance"
@@ -153,6 +154,7 @@
               <BreakCard
                 v-else-if="item.type === 'break'"
                 :break-item="getBreakFromItem(item)"
+                :disabled="!!selectedPerformanceId"
                 @select="selectBreak"
                 @toggle-done="toggleBreakDone"
                 @delete="deleteBreak"

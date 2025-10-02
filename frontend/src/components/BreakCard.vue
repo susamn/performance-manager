@@ -1,7 +1,10 @@
 <template>
   <div
     class="break-card"
-    :class="{ 'done': breakItem.isDone }"
+    :class="{
+      'done': breakItem.isDone,
+      'disabled': disabled
+    }"
   >
     <div class="flex items-center justify-between py-3 px-4">
       <!-- Drag Handle -->
@@ -16,7 +19,7 @@
       </div>
 
       <!-- Break Info -->
-      <div class="flex-1 min-w-0 cursor-pointer text-center" @click="$emit('select', breakItem)">
+      <div class="flex-1 min-w-0 text-center" :class="disabled ? 'cursor-not-allowed' : 'cursor-pointer'" @click="!disabled && $emit('select', breakItem)">
         <h4 class="text-lg font-medium text-white mb-1">{{ breakItem.name }}</h4>
         <div class="flex items-center justify-center gap-3 text-sm text-gray-400">
           <span class="px-2 py-1 bg-blue-600/20 text-blue-300 rounded">{{ breakItem.type }}</span>
@@ -30,21 +33,31 @@
       <!-- Action Buttons -->
       <div class="flex items-center space-x-1 flex-shrink-0">
         <button
-          @click.stop="$emit('toggleDone', breakItem)"
+          @click.stop="!disabled && $emit('toggleDone', breakItem)"
+          :disabled="disabled"
           :class="[
             'px-2 py-1 text-xs rounded border transition-colors',
-            breakItem.isDone
-              ? 'bg-green-600/20 border-green-500 text-green-300 hover:bg-green-600/30'
-              : 'bg-gray-600/20 border-gray-500 text-gray-300 hover:bg-gray-600/30'
+            disabled
+              ? 'bg-gray-700/30 border-gray-600 text-gray-500 cursor-not-allowed'
+              : breakItem.isDone
+                ? 'bg-green-600/20 border-green-500 text-green-300 hover:bg-green-600/30'
+                : 'bg-gray-600/20 border-gray-500 text-gray-300 hover:bg-gray-600/30'
           ]"
-          :title="breakItem.isDone ? 'Mark as incomplete' : 'Mark as completed'"
+          :title="disabled ? 'Another performance is selected' : breakItem.isDone ? 'Mark as incomplete' : 'Mark as completed'"
         >
           {{ breakItem.isDone ? '✓' : '○' }}
         </button>
 
         <button
-          @click.stop="$emit('delete', breakItem)"
-          class="p-1 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors"
+          @click.stop="!disabled && $emit('delete', breakItem)"
+          :disabled="disabled"
+          :class="[
+            'p-1 rounded transition-colors',
+            disabled
+              ? 'text-gray-500 cursor-not-allowed'
+              : 'text-red-400 hover:text-red-300 hover:bg-red-900/20'
+          ]"
+          :title="disabled ? 'Another performance is selected' : 'Delete break'"
         >
           <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
             <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" />
@@ -60,6 +73,7 @@ import type { Break } from '@/types'
 
 defineProps<{
   breakItem: Break
+  disabled?: boolean
 }>()
 
 defineEmits<{
@@ -115,5 +129,14 @@ function formatDate(dateString: string): string {
 
 .sortable-drag {
   transform: rotate(2deg);
+}
+
+.break-card.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.break-card.disabled .drag-handle {
+  pointer-events: auto;
 }
 </style>
