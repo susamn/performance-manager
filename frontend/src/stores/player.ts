@@ -189,6 +189,7 @@ export const usePlayerStore = defineStore('player', () => {
   return {
     playState,
     currentTrack,
+    howlInstance,
     isLoading,
     loadProgress,
     formattedCurrentTime,
