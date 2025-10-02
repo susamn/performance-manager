@@ -37,6 +37,8 @@ export interface Event {
   createdAt: string
   performances: Performance[]
   breaks: Break[]
+  coverImage?: string | null
+  imagePosition?: { x: number; y: number }
 }
 
 export interface PlayState {

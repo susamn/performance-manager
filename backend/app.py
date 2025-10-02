@@ -19,6 +19,7 @@ CORS(app)
 # Configuration
 CONFIG_DIR = Path.home() / '.config' / 'performance-manager'
 ALLOWED_EXTENSIONS = {'mp3', 'mp4', 'aac', 'm4a', 'wav', 'flac'}
+ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
 
 # Ensure config directory exists
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -65,7 +66,9 @@ class EventManager:
             'description': description,
             'createdAt': datetime.now().isoformat(),
             'performances': [],
-            'breaks': []
+            'breaks': [],
+            'coverImage': None,
+            'imagePosition': {'x': 50, 'y': 50}  # Default center position as percentages
         }
 
         self.events.append(event)
@@ -304,6 +307,53 @@ class EventManager:
             return True
         return False
 
+    def update_event(self, event_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Update an event"""
+        event = self.get_event(event_id)
+        if event:
+            event.update(updates)
+            self.save_events()
+            return event
+        return None
+
+    def save_event_cover_image(self, event_id: str, file, filename: str) -> Optional[str]:
+        """Save a cover image for an event"""
+        event_dir = self.get_event_dir(event_id)
+
+        # Get file extension
+        _, ext = os.path.splitext(filename)
+        if not ext:
+            ext = '.jpg'  # Default extension
+
+        # Save as cover with original extension
+        cover_filename = f'cover{ext}'
+        cover_path = event_dir / cover_filename
+
+        # Remove any existing cover images
+        for existing_cover in event_dir.glob('cover.*'):
+            if existing_cover.exists():
+                existing_cover.unlink()
+
+        # Save new cover image
+        file.save(cover_path)
+
+        # Update event with cover image info
+        event = self.get_event(event_id)
+        if event:
+            event['coverImage'] = cover_filename
+            self.save_events()
+            return cover_filename
+        return None
+
+    def get_event_cover_path(self, event_id: str) -> Optional[Path]:
+        """Get the path to the event's cover image"""
+        event = self.get_event(event_id)
+        if event and event.get('coverImage'):
+            cover_path = self.get_event_dir(event_id) / event['coverImage']
+            if cover_path.exists():
+                return cover_path
+        return None
+
 # Global event manager instance
 em = EventManager()
 
@@ -312,21 +362,68 @@ def allowed_file(filename: str) -> bool:
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def allowed_image_file(filename: str) -> bool:
+    """Check if image file extension is allowed"""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
+
 # Event endpoints
 @app.route('/api/events', methods=['GET'])
 def get_events():
-    """Get all events"""
-    return jsonify(em.events)
+    """Get all events with performance counts"""
+    events_with_counts = []
+    for event in em.events:
+        event_with_count = event.copy()
+        # Get performance count for this event
+        try:
+            # Load performances from the event's performances.json file
+            performances_file = em.get_event_performances_file(event['id'])
+            if performances_file.exists():
+                with open(performances_file, 'r') as f:
+                    event_performances = json.load(f)
+                event_with_count['performanceCount'] = len(event_performances)
+            else:
+                event_with_count['performanceCount'] = 0
+        except Exception:
+            event_with_count['performanceCount'] = 0
+        events_with_counts.append(event_with_count)
+    return jsonify(events_with_counts)
 
 @app.route('/api/events', methods=['POST'])
 def create_event():
     """Create a new event"""
-    data = request.get_json()
-    if not data or 'name' not in data:
-        return jsonify({'error': 'Name is required'}), 400
+    # Check if this is a form submission with files
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        # Handle form data with files
+        name = request.form.get('name')
+        description = request.form.get('description', '')
 
-    event = em.create_event(data['name'], data.get('description', ''))
-    return jsonify(event), 201
+        if not name:
+            return jsonify({'error': 'Name is required'}), 400
+
+        # Create event
+        event = em.create_event(name, description)
+        if not event:
+            return jsonify({'error': 'Failed to create event'}), 500
+
+        # Handle cover image upload
+        if 'coverImage' in request.files:
+            file = request.files['coverImage']
+            if file and file.filename and allowed_image_file(file.filename):
+                filename = secure_filename(file.filename)
+                cover_filename = em.save_event_cover_image(event['id'], file, filename)
+                if cover_filename:
+                    event['coverImage'] = cover_filename
+
+        return jsonify(event), 201
+    else:
+        # Handle JSON data (for backward compatibility)
+        data = request.get_json()
+        if not data or 'name' not in data:
+            return jsonify({'error': 'Name is required'}), 400
+
+        event = em.create_event(data['name'], data.get('description', ''))
+        return jsonify(event), 201
 
 @app.route('/api/events/<event_id>', methods=['GET'])
 def get_event(event_id: str):
@@ -590,6 +687,82 @@ def update_track_completion(event_id: str, performance_id: str, track_id: str):
         return jsonify(updated_track)
     return jsonify({'error': 'Track not found or failed to update'}), 404
 
+@app.route('/api/events/<event_id>/performances/<performance_id>/tracks', methods=['POST'])
+def add_tracks_to_performance(event_id: str, performance_id: str):
+    """Add multiple tracks to a performance"""
+    event = em.get_event(event_id)
+    if not event:
+        return jsonify({'error': 'Event not found'}), 404
+
+    performance = em.get_performance(event_id, performance_id)
+    if not performance:
+        return jsonify({'error': 'Performance not found'}), 404
+
+    performer = request.form.get('performer', 'Unknown')
+    files = request.files.getlist('files')
+
+    if not files:
+        return jsonify({'error': 'No files provided'}), 400
+
+    added_tracks = []
+    for file in files:
+        if file and file.filename and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            performance_dir = em.get_performance_dir(event_id, performance_id)
+            file_path = performance_dir / filename
+
+            # Handle duplicate filenames
+            counter = 1
+            original_name, ext = os.path.splitext(filename)
+            while file_path.exists():
+                filename = f"{original_name}_{counter}{ext}"
+                file_path = performance_dir / filename
+                counter += 1
+
+            file.save(file_path)
+            track = em.add_track(event_id, performance_id, filename, performer)
+            if track:
+                added_tracks.append(track)
+
+    return jsonify({'message': f'Added {len(added_tracks)} tracks', 'tracks': added_tracks}), 201
+
+@app.route('/api/events/<event_id>/performances/<performance_id>/tracks/<track_id>', methods=['DELETE'])
+def delete_track(event_id: str, performance_id: str, track_id: str):
+    """Delete a specific track from a performance"""
+    event = em.get_event(event_id)
+    if not event:
+        return jsonify({'error': 'Event not found'}), 404
+
+    performance = em.get_performance(event_id, performance_id)
+    if not performance:
+        return jsonify({'error': 'Performance not found'}), 404
+
+    # Find the track
+    track = None
+    for t in performance['tracks']:
+        if t['id'] == track_id:
+            track = t
+            break
+
+    if not track:
+        return jsonify({'error': 'Track not found'}), 404
+
+    # Remove file from filesystem
+    performance_dir = em.get_performance_dir(event_id, performance_id)
+    file_path = performance_dir / track['filename']
+    if file_path.exists():
+        file_path.unlink()
+
+    # Remove track from performance
+    performances = em.load_event_performances(event_id)
+    for perf in performances:
+        if perf['id'] == performance_id:
+            perf['tracks'] = [t for t in perf['tracks'] if t['id'] != track_id]
+            break
+
+    em.save_event_performances(event_id, performances)
+    return jsonify({'message': 'Track deleted successfully'}), 200
+
 # Break endpoints
 @app.route('/api/events/<event_id>/breaks', methods=['GET'])
 def get_event_breaks(event_id: str):
@@ -694,6 +867,78 @@ def reorder_event_breaks(event_id: str):
 
     em.save_event_breaks(event_id, reordered_breaks)
     return jsonify({'message': 'Breaks reordered successfully'})
+
+# Event cover image endpoints
+@app.route('/api/events/<event_id>/cover', methods=['POST'])
+def upload_event_cover(event_id: str):
+    """Upload a cover image for an event"""
+    event = em.get_event(event_id)
+    if not event:
+        return jsonify({'error': 'Event not found'}), 404
+
+    if 'coverImage' not in request.files:
+        return jsonify({'error': 'No cover image provided'}), 400
+
+    file = request.files['coverImage']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+
+    if not allowed_image_file(file.filename):
+        return jsonify({'error': 'Image file type not allowed. Allowed types: jpg, jpeg, png, webp'}), 400
+
+    filename = secure_filename(file.filename)
+    cover_filename = em.save_event_cover_image(event_id, file, filename)
+
+    if cover_filename:
+        updated_event = em.get_event(event_id)
+        return jsonify({
+            'message': 'Cover image uploaded successfully',
+            'coverImage': cover_filename,
+            'event': updated_event
+        }), 201
+
+    return jsonify({'error': 'Failed to save cover image'}), 500
+
+@app.route('/api/events/<event_id>/cover')
+def get_event_cover(event_id: str):
+    """Get the cover image for an event"""
+    cover_path = em.get_event_cover_path(event_id)
+    if cover_path:
+        return send_file(cover_path)
+    return jsonify({'error': 'Cover image not found'}), 404
+
+@app.route('/api/events/<event_id>/position', methods=['PUT'])
+def update_event_image_position(event_id: str):
+    """Update the position of the event's cover image"""
+    event = em.get_event(event_id)
+    if not event:
+        return jsonify({'error': 'Event not found'}), 404
+
+    data = request.get_json()
+    if not data or 'x' not in data or 'y' not in data:
+        return jsonify({'error': 'x and y coordinates are required'}), 400
+
+    try:
+        x = float(data['x'])
+        y = float(data['y'])
+
+        # Clamp values between 0 and 100
+        x = max(0, min(100, x))
+        y = max(0, min(100, y))
+
+        updated_event = em.update_event(event_id, {
+            'imagePosition': {'x': x, 'y': y}
+        })
+
+        if updated_event:
+            return jsonify({
+                'message': 'Image position updated successfully',
+                'imagePosition': updated_event['imagePosition']
+            })
+
+        return jsonify({'error': 'Failed to update image position'}), 500
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid coordinate values'}), 400
 
 @app.route('/api/health')
 def health_check():
