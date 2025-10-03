@@ -286,6 +286,7 @@
                         @delete="deletePerformance"
                         @track-selected="onTrackSelected"
                         @toggle-track-completion="toggleTrackCompletion"
+                        @delete-track="deleteTrack"
                         class="performance-card-item"
                         :data-id="item.id"
                       />
@@ -321,6 +322,7 @@
                         @delete="deletePerformance"
                         @track-selected="onTrackSelected"
                         @toggle-track-completion="toggleTrackCompletion"
+                        @delete-track="deleteTrack"
                         class="performance-card-item completed-item"
                         :data-id="item.id"
                       />
@@ -696,6 +698,28 @@ async function toggleTrackCompletion(track: Track) {
   } catch (error) {
     console.error('Error updating track completion:', error)
     alert('Failed to update track completion. Please try again.')
+  }
+}
+
+async function deleteTrack(track: Track) {
+  if (!selectedPerformanceId.value) return
+
+  if (!confirm(`Are you sure you want to delete "${track.filename}"?`)) {
+    return
+  }
+
+  try {
+    const response = await fetch(`/api/events/${eventId}/performances/${selectedPerformanceId.value}/tracks/${track.id}`, {
+      method: 'DELETE'
+    })
+
+    if (!response.ok) throw new Error('Failed to delete track')
+
+    // Reload performances to get updated data with recalculated resolved duration
+    await eventStore.loadEventPerformances(eventId)
+  } catch (error) {
+    console.error('Error deleting track:', error)
+    alert('Failed to delete track. Please try again.')
   }
 }
 

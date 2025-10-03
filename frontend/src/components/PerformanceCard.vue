@@ -140,6 +140,15 @@
                   <path d="M8,5.14V19.14L19,12.14L8,5.14Z" />
                 </svg>
               </button>
+              <button
+                @click.stop="$emit('deleteTrack', track)"
+                class="p-1 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors"
+                title="Delete track"
+              >
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -169,6 +178,7 @@ defineEmits<{
   delete: [performance: Performance]
   trackSelected: [track: Track]
   toggleTrackCompletion: [track: Track]
+  deleteTrack: [track: Track]
 }>()
 
 function formatDate(dateString: string): string {
