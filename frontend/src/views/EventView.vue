@@ -468,14 +468,16 @@ function initializeSortable() {
   if (performanceContainer.value && sortedItems.value.active.length > 0) {
     console.log('Initializing sortable with', sortedItems.value.active.length, 'items')
     sortable = new Sortable(performanceContainer.value, {
-      animation: 150,
+      animation: 200,
+      easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
       handle: '.drag-handle',
       ghostClass: 'sortable-ghost',
       chosenClass: 'sortable-chosen',
       dragClass: 'sortable-drag',
-      forceFallback: true,
-      fallbackOnBody: true,
       swapThreshold: 0.65,
+      invertSwap: false,
+      direction: 'vertical',
+      removeCloneOnHide: true,
       onStart: (evt) => {
         console.log('Drag started', evt)
       },
@@ -692,23 +694,29 @@ function handleKeydown(event: KeyboardEvent) {
 
 <style scoped>
 .sortable-ghost {
-  opacity: 0.4;
+  opacity: 0.3;
+  background: rgba(16, 185, 129, 0.1) !important;
+  border: 2px dashed rgba(16, 185, 129, 0.5) !important;
 }
 
 .sortable-chosen {
-  transform: scale(1.02);
+  cursor: grabbing !important;
 }
 
 .sortable-drag {
-  transform: rotate(5deg);
+  opacity: 1 !important;
+  cursor: grabbing !important;
+  transform: rotate(2deg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+  transition: none !important;
 }
 
 .performance-card-item {
-  transition: all 0.3s ease;
+  transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
 .break-card-item {
-  transition: all 0.3s ease;
+  transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
 /* Ensure performance cards have proper styling for drag and drop */
@@ -738,9 +746,17 @@ function handleKeydown(event: KeyboardEvent) {
 
 :deep(.drag-handle) {
   cursor: grab !important;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
 :deep(.drag-handle:active) {
+  cursor: grabbing !important;
+}
+
+:deep(.sortable-chosen .drag-handle) {
   cursor: grabbing !important;
 }
 
