@@ -779,14 +779,15 @@ interface TypeDistribution {
 
 const performanceTypeDistribution = computed<TypeDistribution[]>(() => {
   const allItems = [...sortedItems.value.active, ...sortedItems.value.completed]
+  const performancesOnly = allItems.filter(item => item.type !== 'Break')
   const typeMap = new Map<string, number>()
 
-  allItems.forEach(item => {
+  performancesOnly.forEach(item => {
     const type = item.type
     typeMap.set(type, (typeMap.get(type) || 0) + 1)
   })
 
-  const total = allItems.length
+  const total = performancesOnly.length
   if (total === 0) return []
 
   return Array.from(typeMap.entries())
