@@ -37,7 +37,7 @@
         <div class="lg:col-span-2 flex flex-col h-[calc(100vh-120px)]">
           <!-- Performance Info Card (Always Visible) -->
           <div
-            class="mb-6 border border-player-accent/30 rounded-lg p-6 h-[400px] relative overflow-hidden"
+            class="mb-6 border border-player-accent/30 rounded-lg p-6 h-[400px] relative overflow-hidden cover-image-container"
             :class="!selectedPerformance && event?.coverImage ? 'bg-cover bg-center' : 'bg-gradient-to-r from-gray-800 to-gray-700'"
             :style="!selectedPerformance && event?.coverImage ? {
               backgroundImage: `url(${coverImageUrl})`,
@@ -46,6 +46,8 @@
             @mouseenter="!selectedPerformance && event?.coverImage ? showPositionButton = true : null"
             @mouseleave="!selectedPerformance && event?.coverImage ? showPositionButton = false : null"
           >
+            <!-- Diagonal shine effect overlay (only when cover image exists) -->
+            <div v-if="!selectedPerformance && event?.coverImage" class="diagonal-shine"></div>
             <!-- When a performance is selected -->
             <div v-if="selectedPerformance">
               <div class="flex items-start justify-between mb-4">
@@ -867,5 +869,54 @@ function handleKeydown(event: KeyboardEvent) {
 :deep(.h-full.overflow-y-auto::-webkit-scrollbar-thumb:active) {
   background: linear-gradient(180deg, rgba(16, 185, 129, 0.8) 0%, rgba(16, 185, 129, 0.6) 100%);
   border-color: rgba(16, 185, 129, 0.7);
+}
+
+/* Diagonal shine animation for cover image */
+.diagonal-shine {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 50%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent 40%,
+    rgba(255, 255, 255, 0.1) 45%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0.1) 55%,
+    transparent 60%,
+    transparent 100%
+  );
+  transform: rotate(45deg);
+  animation: diagonal-shine 8s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes diagonal-shine {
+  0% {
+    left: -50%;
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  20% {
+    left: 150%;
+    opacity: 1;
+  }
+  25% {
+    opacity: 0;
+  }
+  100% {
+    left: 150%;
+    opacity: 0;
+  }
+}
+
+/* Ensure cover image container can show the shine effect */
+.cover-image-container {
+  position: relative;
 }
 </style>
