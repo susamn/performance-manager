@@ -372,6 +372,47 @@
         <div class="lg:col-span-1 space-y-6">
           <MediaPlayer />
 
+          <!-- Performance Type Distribution -->
+          <div class="bg-gradient-to-r from-gray-800 to-gray-700 border border-player-accent/30 rounded-lg p-4">
+            <h3 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+              <svg class="w-4 h-4 text-player-accent" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M11,2V22C5.9,21.5 2,17.2 2,12C2,6.8 5.9,2.5 11,2M13,2V11H22C21.5,6.2 17.8,2.5 13,2M13,13V22C17.7,21.5 21.5,17.8 22,13H13Z" />
+              </svg>
+              Performance Types
+            </h3>
+            <div v-if="performanceTypeDistribution.length > 0" class="space-y-3">
+              <div
+                v-for="typeData in performanceTypeDistribution"
+                :key="typeData.type"
+                class="relative"
+              >
+                <div class="flex items-center justify-between mb-1">
+                  <span
+                    class="text-xs font-medium px-2 py-0.5 rounded-full border"
+                    :style="getTypeStyle(typeData.type)"
+                  >
+                    {{ typeData.type }}
+                  </span>
+                  <span class="text-xs text-gray-400">
+                    {{ typeData.count }} ({{ typeData.percentage }}%)
+                  </span>
+                </div>
+                <div class="w-full bg-gray-700/50 rounded-full h-2 overflow-hidden">
+                  <div
+                    class="h-full rounded-full transition-all duration-500"
+                    :style="{
+                      width: `${typeData.percentage}%`,
+                      backgroundColor: getTypeStyle(typeData.type).borderColor
+                    }"
+                  ></div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-center text-gray-500 text-xs py-2">
+              No performances yet
+            </div>
+          </div>
+
           <!-- Artist Cloud Widget -->
           <div class="bg-gradient-to-r from-gray-800 to-gray-700 border border-player-accent/30 rounded-lg p-4">
             <h3 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
@@ -615,6 +656,51 @@ const maxArtistCount = computed(() => {
   if (artistCloud.value.length === 0) return 1
   return Math.max(...artistCloud.value.map(a => a.count))
 })
+
+// Performance type distribution
+interface TypeDistribution {
+  type: string
+  count: number
+  percentage: number
+}
+
+const performanceTypeDistribution = computed<TypeDistribution[]>(() => {
+  const allItems = [...sortedItems.value.active, ...sortedItems.value.completed]
+  const typeMap = new Map<string, number>()
+
+  allItems.forEach(item => {
+    const type = item.type
+    typeMap.set(type, (typeMap.get(type) || 0) + 1)
+  })
+
+  const total = allItems.length
+  if (total === 0) return []
+
+  return Array.from(typeMap.entries())
+    .map(([type, count]) => ({
+      type,
+      count,
+      percentage: Math.round((count / total) * 100)
+    }))
+    .sort((a, b) => b.count - a.count)
+})
+
+// Color schemes for performance types (reused from PerformanceCard)
+function getTypeStyle(type: string): { backgroundColor: string; borderColor: string; color: string } {
+  const styles: Record<string, { bg: string; border: string; text: string }> = {
+    'Song': { bg: 'rgba(59, 130, 246, 0.15)', border: 'rgba(59, 130, 246, 0.4)', text: 'rgb(147, 197, 253)' },
+    'Dance': { bg: 'rgba(236, 72, 153, 0.15)', border: 'rgba(236, 72, 153, 0.4)', text: 'rgb(249, 168, 212)' },
+    'Recitation': { bg: 'rgba(168, 85, 247, 0.15)', border: 'rgba(168, 85, 247, 0.4)', text: 'rgb(216, 180, 254)' },
+    'Break': { bg: 'rgba(251, 191, 36, 0.15)', border: 'rgba(251, 191, 36, 0.4)', text: 'rgb(253, 224, 71)' }
+  }
+
+  const style = styles[type] || { bg: 'rgba(107, 114, 128, 0.15)', border: 'rgba(107, 114, 128, 0.4)', text: 'rgb(156, 163, 175)' }
+  return {
+    backgroundColor: style.bg,
+    borderColor: style.border,
+    color: style.text
+  }
+}
 
 onMounted(async () => {
   if (eventId) {
