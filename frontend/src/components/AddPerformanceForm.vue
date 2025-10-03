@@ -4,7 +4,7 @@
 
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <div>
-        <label for="performanceName" class="block text-sm font-medium text-gray-300 mb-2">
+        <label for="performanceName" class="block text-xs font-medium text-gray-300 mb-1.5">
           {{ isBreakType ? 'Break Name' : 'Performance Name' }} *
         </label>
         <input
@@ -13,12 +13,12 @@
           type="text"
           required
           :placeholder="isBreakType ? 'Enter break name' : 'Enter performance name'"
-          class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white"
+          class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white text-sm h-[38px]"
         />
       </div>
 
       <div v-if="!isBreakType">
-        <label for="performerName" class="block text-sm font-medium text-gray-300 mb-2">
+        <label for="performerName" class="block text-xs font-medium text-gray-300 mb-1.5">
           Performer Name *
         </label>
         <input
@@ -27,13 +27,13 @@
           type="text"
           :required="!isBreakType"
           placeholder="Enter performer name"
-          class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white"
+          class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white text-sm h-[38px]"
         />
       </div>
 
       <div class="grid gap-3" :class="isBreakType ? 'grid-cols-2' : 'grid-cols-3'">
         <div>
-          <label for="performanceType" class="block text-sm font-medium text-gray-300 mb-2">
+          <label for="performanceType" class="block text-xs font-medium text-gray-300 mb-1.5">
             Type *
           </label>
           <select
@@ -41,7 +41,7 @@
             v-model="performanceType"
             required
             @change="handleTypeChange"
-            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white"
+            class="form-select w-full px-3 py-2 pr-8 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white text-sm h-[38px]"
           >
             <option value="Song">Song</option>
             <option value="Dance">Dance</option>
@@ -51,14 +51,14 @@
         </div>
 
         <div v-if="isBreakType">
-          <label for="breakSubType" class="block text-sm font-medium text-gray-300 mb-2">
+          <label for="breakSubType" class="block text-xs font-medium text-gray-300 mb-1.5">
             Break Type *
           </label>
           <select
             id="breakSubType"
             v-model="breakSubType"
             required
-            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white"
+            class="form-select w-full px-3 py-2 pr-8 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white text-sm h-[38px]"
           >
             <option value="Lunch">Lunch</option>
             <option value="Dinner">Dinner</option>
@@ -70,14 +70,14 @@
         </div>
 
         <div v-if="!isBreakType">
-          <label for="performanceMode" class="block text-sm font-medium text-gray-300 mb-2">
+          <label for="performanceMode" class="block text-xs font-medium text-gray-300 mb-1.5">
             Mode *
           </label>
           <select
             id="performanceMode"
             v-model="performanceMode"
             :required="!isBreakType"
-            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white"
+            class="form-select w-full px-3 py-2 pr-8 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white text-sm h-[38px]"
           >
             <option value="Solo">Solo</option>
             <option value="Duet">Duet</option>
@@ -86,7 +86,7 @@
         </div>
 
         <div>
-          <label for="expectedDuration" class="block text-sm font-medium text-gray-300 mb-2">
+          <label for="expectedDuration" class="block text-xs font-medium text-gray-300 mb-1.5">
             Duration (min)
           </label>
           <input
@@ -94,8 +94,8 @@
             v-model.number="expectedDuration"
             type="number"
             min="1"
-            placeholder="minutes"
-            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white"
+            placeholder="min"
+            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white text-sm h-[38px]"
           />
         </div>
       </div>
@@ -259,3 +259,20 @@ function clearForm() {
   }
 }
 </script>
+
+<style scoped>
+/* Custom select dropdown styling to prevent icon overlap */
+.form-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 1.25em 1.25em;
+}
+
+.form-select:focus {
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2310B981' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+}
+</style>
