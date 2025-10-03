@@ -18,6 +18,65 @@
               <p v-if="event?.description" class="text-sm text-gray-400">{{ event.description }}</p>
             </div>
           </div>
+
+          <!-- Lock Toggle Button -->
+          <div class="relative">
+            <button
+              @click="cycleLockState"
+              class="p-2.5 rounded-full transition-all duration-300 border-2"
+              :class="lockState === 'locked' ?
+                'bg-red-600/20 border-red-500 text-red-400 hover:bg-red-600/30' :
+                lockState === 'use' ?
+                'bg-blue-600/20 border-blue-500 text-blue-400 hover:bg-blue-600/30' :
+                'bg-green-600/20 border-green-500 text-green-400 hover:bg-green-600/30'"
+              :title="lockState === 'locked' ? 'Locked - Click to unlock' : lockState === 'use' ? 'Use Mode - Click for full access' : 'Unlocked - Click to lock'"
+            >
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <!-- Locked (Red) -->
+                <path v-if="lockState === 'locked'" d="M12,17A2,2 0 0,0 14,15C14,13.89 13.1,13 12,13A2,2 0 0,0 10,15A2,2 0 0,0 12,17M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10C4,8.89 4.9,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z" />
+                <!-- Use mode (Blue - Play icon) -->
+                <path v-else-if="lockState === 'use'" d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M10,16.5V7.5L16,12" />
+                <!-- Unlocked (Green) -->
+                <path v-else d="M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6C4.89,22 4,21.1 4,20V10A2,2 0 0,1 6,8H15V6A3,3 0 0,0 12,3A3,3 0 0,0 9,6H7A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,17A2,2 0 0,0 14,15A2,2 0 0,0 12,13A2,2 0 0,0 10,15A2,2 0 0,0 12,17Z" />
+              </svg>
+            </button>
+
+            <!-- Unlock Code Popup -->
+            <div
+              v-if="showUnlockPopup"
+              class="absolute top-full right-0 mt-2 bg-gray-800 border-2 border-amber-500 rounded-lg p-4 shadow-xl z-50 min-w-[250px]"
+              @click.stop
+            >
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-semibold text-white">Enter Unlock Code</h3>
+                <button
+                  @click="closeUnlockPopup"
+                  class="text-gray-400 hover:text-white transition-colors"
+                >
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
+                  </svg>
+                </button>
+              </div>
+              <form @submit.prevent="verifyUnlockCode">
+                <input
+                  v-model="unlockCodeInput"
+                  type="password"
+                  placeholder="Enter code"
+                  ref="unlockInput"
+                  class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-amber-500 text-white mb-2"
+                  autocomplete="off"
+                />
+                <p v-if="unlockError" class="text-xs text-red-400 mb-2">{{ unlockError }}</p>
+                <button
+                  type="submit"
+                  class="w-full px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded text-sm font-medium transition-colors"
+                >
+                  Unlock
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -27,10 +86,12 @@
       <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <!-- Left Sidebar - Add Performance Form -->
         <div class="lg:col-span-1 space-y-6">
-          <AddPerformanceForm
-            :event-id="eventId"
-            @performance-created="onPerformanceCreated"
-          />
+          <div :class="{ 'pointer-events-none opacity-50': lockState !== 'unlocked' }">
+            <AddPerformanceForm
+              :event-id="eventId"
+              @performance-created="onPerformanceCreated"
+            />
+          </div>
 
           <!-- Performance Timeline -->
           <div class="bg-gradient-to-r from-gray-800 to-gray-700 border border-player-accent/30 rounded-lg p-4">
@@ -138,8 +199,8 @@
               backgroundImage: `url(${coverImageUrl})`,
               backgroundPosition: `${event.imagePosition?.x || 50}% ${event.imagePosition?.y || 50}%`
             } : {}"
-            @mouseenter="!selectedPerformance && event?.coverImage ? showPositionButton = true : null"
-            @mouseleave="!selectedPerformance && event?.coverImage ? showPositionButton = false : null"
+            @mouseenter="lockState === 'unlocked' && !selectedPerformance && event?.coverImage ? showPositionButton = true : null"
+            @mouseleave="lockState === 'unlocked' && !selectedPerformance && event?.coverImage ? showPositionButton = false : null"
           >
             <!-- Diagonal shine effect overlay (only when cover image exists) -->
             <div v-if="!selectedPerformance && event?.coverImage" class="diagonal-shine"></div>
@@ -396,24 +457,24 @@
                         v-if="item.type !== 'Break'"
                         :performance="item"
                         :is-selected="selectedPerformanceId === item.id"
-                        :disabled="!!(selectedPerformanceId && selectedPerformanceId !== item.id)"
-                        @select="selectPerformance"
-                        @toggle-done="toggleDone"
-                        @edit="editPerformance"
-                        @delete="deletePerformance"
-                        @track-selected="onTrackSelected"
-                        @toggle-track-completion="toggleTrackCompletion"
-                        @delete-track="deleteTrack"
+                        :disabled="lockState === 'locked' || !!(selectedPerformanceId && selectedPerformanceId !== item.id)"
+                        @select="(p) => lockState !== 'locked' && selectPerformance(p)"
+                        @toggle-done="(p) => lockState !== 'locked' && toggleDone(p)"
+                        @edit="(p) => lockState === 'unlocked' && editPerformance(p)"
+                        @delete="(p) => lockState === 'unlocked' && deletePerformance(p)"
+                        @track-selected="(t) => lockState !== 'locked' && onTrackSelected(t)"
+                        @toggle-track-completion="(t) => lockState !== 'locked' && toggleTrackCompletion(t)"
+                        @delete-track="(t) => lockState === 'unlocked' && deleteTrack(t)"
                         class="performance-card-item"
                         :data-id="item.id"
                       />
                       <BreakCard
                         v-else
                         :break-item="convertPerformanceToBreak(item)"
-                        :disabled="!!selectedPerformanceId"
+                        :disabled="lockState === 'locked' || !!selectedPerformanceId"
                         @select="() => {}"
-                        @toggle-done="() => toggleDone(item)"
-                        @delete="() => deletePerformance(item)"
+                        @toggle-done="() => lockState !== 'locked' && toggleDone(item)"
+                        @delete="() => lockState === 'unlocked' && deletePerformance(item)"
                         class="break-card-item"
                         :data-id="item.id"
                       />
@@ -432,24 +493,24 @@
                         v-if="item.type !== 'Break'"
                         :performance="item"
                         :is-selected="false"
-                        :disabled="false"
-                        @select="selectPerformance"
-                        @toggle-done="toggleDone"
-                        @edit="editPerformance"
-                        @delete="deletePerformance"
-                        @track-selected="onTrackSelected"
-                        @toggle-track-completion="toggleTrackCompletion"
-                        @delete-track="deleteTrack"
+                        :disabled="lockState === 'locked'"
+                        @select="(p) => lockState !== 'locked' && selectPerformance(p)"
+                        @toggle-done="(p) => lockState !== 'locked' && toggleDone(p)"
+                        @edit="(p) => lockState === 'unlocked' && editPerformance(p)"
+                        @delete="(p) => lockState === 'unlocked' && deletePerformance(p)"
+                        @track-selected="(t) => lockState !== 'locked' && onTrackSelected(t)"
+                        @toggle-track-completion="(t) => lockState !== 'locked' && toggleTrackCompletion(t)"
+                        @delete-track="(t) => lockState === 'unlocked' && deleteTrack(t)"
                         class="performance-card-item completed-item"
                         :data-id="item.id"
                       />
                       <BreakCard
                         v-else
                         :break-item="convertPerformanceToBreak(item)"
-                        :disabled="false"
+                        :disabled="lockState === 'locked'"
                         @select="() => {}"
-                        @toggle-done="() => toggleDone(item)"
-                        @delete="() => deletePerformance(item)"
+                        @toggle-done="() => lockState !== 'locked' && toggleDone(item)"
+                        @delete="() => lockState === 'unlocked' && deletePerformance(item)"
                         class="break-card-item completed-item"
                         :data-id="item.id"
                       />
@@ -577,6 +638,82 @@ const eventId = route.params.eventId as string
 const performanceContainer = ref<HTMLElement>()
 const searchQuery = ref('')
 let sortable: Sortable | null = null
+
+// Lock state: 'locked' | 'use' | 'unlocked'
+type LockState = 'locked' | 'use' | 'unlocked'
+const lockState = ref<LockState>('use')
+const showUnlockPopup = ref(false)
+const unlockCodeInput = ref('')
+const unlockError = ref('')
+const unlockInput = ref<HTMLInputElement>()
+
+// Computed helper for backward compatibility
+const isLocked = computed(() => lockState.value === 'locked')
+const isUseMode = computed(() => lockState.value === 'use')
+const isFullyUnlocked = computed(() => lockState.value === 'unlocked')
+
+function cycleLockState() {
+  if (lockState.value === 'unlocked') {
+    // Unlocked -> Locked (no password needed)
+    lockState.value = 'locked'
+  } else if (lockState.value === 'locked') {
+    // Locked -> Show unlock popup
+    showUnlockPopup.value = true
+    unlockCodeInput.value = ''
+    unlockError.value = ''
+    nextTick(() => {
+      unlockInput.value?.focus()
+    })
+  } else if (lockState.value === 'use') {
+    // Use -> Show unlock popup for full access
+    showUnlockPopup.value = true
+    unlockCodeInput.value = ''
+    unlockError.value = ''
+    nextTick(() => {
+      unlockInput.value?.focus()
+    })
+  }
+}
+
+function closeUnlockPopup() {
+  showUnlockPopup.value = false
+  unlockCodeInput.value = ''
+  unlockError.value = ''
+}
+
+async function verifyUnlockCode() {
+  if (!unlockCodeInput.value.trim()) {
+    unlockError.value = 'Please enter unlock code'
+    return
+  }
+
+  try {
+    const response = await fetch(`/api/events/${eventId}/verify-unlock`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ unlockCode: unlockCodeInput.value.trim() })
+    })
+
+    if (response.ok) {
+      if (lockState.value === 'locked') {
+        // From locked -> use mode
+        lockState.value = 'use'
+      } else if (lockState.value === 'use') {
+        // From use mode -> fully unlocked
+        lockState.value = 'unlocked'
+      }
+      closeUnlockPopup()
+    } else {
+      unlockError.value = 'Incorrect unlock code'
+      unlockCodeInput.value = ''
+    }
+  } catch (error) {
+    console.error('Error verifying unlock code:', error)
+    unlockError.value = 'Failed to verify code'
+  }
+}
 
 const event = computed(() => eventStore.selectedEvent)
 const selectedPerformanceId = computed(() => eventStore.selectedPerformanceId)
@@ -829,6 +966,14 @@ watch(sortedItems, async () => {
   initializeSortable()
 }, { immediate: true })
 
+// Watch for lock state changes and update sortable
+watch(lockState, () => {
+  if (sortable) {
+    // Disable dragging in both locked and use mode, only allow in unlocked
+    sortable.option('disabled', lockState.value !== 'unlocked')
+  }
+})
+
 onUnmounted(() => {
   if (sortable) {
     sortable.destroy()
@@ -856,6 +1001,7 @@ function initializeSortable() {
       invertSwap: false,
       direction: 'vertical',
       removeCloneOnHide: true,
+      disabled: lockState.value !== 'unlocked',
       onStart: (evt) => {
         console.log('Drag started', evt)
       },

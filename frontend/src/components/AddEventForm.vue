@@ -31,6 +31,22 @@
       </div>
 
       <div>
+        <label for="unlockCode" class="block text-sm font-medium text-gray-300 mb-2">
+          Unlock Code *
+        </label>
+        <input
+          id="unlockCode"
+          v-model="unlockCode"
+          type="password"
+          required
+          placeholder="Enter unlock code (min 4 characters)"
+          minlength="4"
+          class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white"
+        />
+        <p class="text-xs text-gray-500 mt-1">This code will be required to unlock and edit the event</p>
+      </div>
+
+      <div>
         <label for="coverImage" class="block text-sm font-medium text-gray-300 mb-2">
           Cover Image (Optional)
         </label>
@@ -90,6 +106,7 @@ const emit = defineEmits<{
 
 const eventName = ref('')
 const eventDescription = ref('')
+const unlockCode = ref('')
 const selectedCoverImage = ref<File | null>(null)
 const coverImagePreview = ref('')
 const isCreating = ref(false)
@@ -118,7 +135,7 @@ function formatFileSize(bytes: number): string {
 }
 
 async function handleSubmit() {
-  if (!eventName.value.trim()) return
+  if (!eventName.value.trim() || !unlockCode.value.trim()) return
 
   isCreating.value = true
 
@@ -126,6 +143,7 @@ async function handleSubmit() {
     const formData = new FormData()
     formData.append('name', eventName.value.trim())
     formData.append('description', eventDescription.value.trim())
+    formData.append('unlockCode', unlockCode.value.trim())
 
     if (selectedCoverImage.value) {
       formData.append('coverImage', selectedCoverImage.value)
@@ -154,6 +172,7 @@ async function handleSubmit() {
 function clearForm() {
   eventName.value = ''
   eventDescription.value = ''
+  unlockCode.value = ''
   selectedCoverImage.value = null
   coverImagePreview.value = ''
   const fileInput = document.getElementById('coverImage') as HTMLInputElement

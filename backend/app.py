@@ -58,11 +58,16 @@ class EventManager:
         """Get performances file path for an event"""
         return self.get_event_dir(event_id) / 'performances.json'
 
-    def create_event(self, name: str, description: str = '') -> Dict[str, Any]:
+    def create_event(self, name: str, description: str = '', unlock_code: str = '12345') -> Dict[str, Any]:
         """Create a new event"""
         event_id = str(uuid.uuid4())
         event_dir = self.get_event_dir(event_id)
         event_dir.mkdir(exist_ok=True)
+
+        # Save unlock code to file
+        unlock_code_file = event_dir / 'unlock_code'
+        with open(unlock_code_file, 'w') as f:
+            f.write(unlock_code)
 
         event = {
             'id': event_id,
@@ -417,12 +422,13 @@ def create_event():
         # Handle form data with files
         name = request.form.get('name')
         description = request.form.get('description', '')
+        unlock_code = request.form.get('unlockCode', '12345')
 
         if not name:
             return jsonify({'error': 'Name is required'}), 400
 
         # Create event
-        event = em.create_event(name, description)
+        event = em.create_event(name, description, unlock_code)
         if not event:
             return jsonify({'error': 'Failed to create event'}), 500
 
@@ -442,7 +448,7 @@ def create_event():
         if not data or 'name' not in data:
             return jsonify({'error': 'Name is required'}), 400
 
-        event = em.create_event(data['name'], data.get('description', ''))
+        event = em.create_event(data['name'], data.get('description', ''), data.get('unlockCode', '12345'))
         return jsonify(event), 201
 
 @app.route('/api/events/<event_id>', methods=['GET'])
@@ -459,6 +465,33 @@ def delete_event(event_id: str):
     if em.delete_event(event_id):
         return '', 204
     return jsonify({'error': 'Event not found'}), 404
+
+@app.route('/api/events/<event_id>/verify-unlock', methods=['POST'])
+def verify_unlock_code(event_id: str):
+    """Verify unlock code for an event"""
+    event = em.get_event(event_id)
+    if not event:
+        return jsonify({'error': 'Event not found'}), 404
+
+    data = request.get_json()
+    if not data or 'unlockCode' not in data:
+        return jsonify({'error': 'Unlock code is required'}), 400
+
+    # Read unlock code from file
+    unlock_code_file = em.get_event_dir(event_id) / 'unlock_code'
+    if not unlock_code_file.exists():
+        # Create default unlock code file if it doesn't exist
+        with open(unlock_code_file, 'w') as f:
+            f.write('12345')
+        stored_code = '12345'
+    else:
+        with open(unlock_code_file, 'r') as f:
+            stored_code = f.read().strip()
+
+    if data['unlockCode'] == stored_code:
+        return jsonify({'success': True}), 200
+    else:
+        return jsonify({'error': 'Incorrect unlock code'}), 401
 
 # Performance endpoints within events
 @app.route('/api/events/<event_id>/performances', methods=['GET'])
