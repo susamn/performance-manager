@@ -26,15 +26,108 @@
     <div class="max-w-7xl mx-auto px-4 py-6">
       <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <!-- Left Sidebar - Add Performance Form -->
-        <div class="lg:col-span-1">
+        <div class="lg:col-span-1 space-y-6">
           <AddPerformanceForm
             :event-id="eventId"
             @performance-created="onPerformanceCreated"
           />
+
+          <!-- Performance Timeline -->
+          <div class="bg-gradient-to-r from-gray-800 to-gray-700 border border-player-accent/30 rounded-lg p-4">
+            <h3 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+              <svg class="w-4 h-4 text-player-accent" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z" />
+              </svg>
+              Timeline
+            </h3>
+            <div v-if="timelineItems.length > 0" class="space-y-2">
+              <div
+                v-for="item in timelineItems"
+                :key="item.id"
+                class="relative pl-6 pb-3 border-l-2 last:border-l-0 last:pb-0"
+                :class="item.isDone ? 'border-green-500/30' : 'border-gray-600'"
+              >
+                <!-- Timeline dot -->
+                <div
+                  class="absolute left-[-5px] top-0 w-3 h-3 rounded-full border-2"
+                  :class="item.isDone ? 'bg-green-500 border-green-400' : 'bg-gray-600 border-gray-500'"
+                ></div>
+
+                <!-- Timeline content -->
+                <div
+                  class="bg-gray-700/30 rounded p-2 hover:bg-gray-700/50 transition-colors cursor-pointer"
+                  @click="selectPerformance(item)"
+                >
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-medium text-white truncate">{{ item.name }}</span>
+                    <span v-if="item.isDone" class="text-xs text-green-400">✓</span>
+                  </div>
+                  <div class="flex items-center gap-1 flex-wrap">
+                    <span
+                      class="px-1.5 py-0.5 rounded text-[10px] font-medium border"
+                      :style="getTypeStyle(item.type)"
+                    >
+                      {{ item.type }}
+                    </span>
+                    <span class="text-[10px] text-gray-400 truncate">{{ item.performer }}</span>
+                  </div>
+                  <div v-if="item.expectedDuration" class="mt-1 text-[10px] text-gray-500">
+                    {{ formatDuration(item.expectedDuration) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-center text-gray-500 text-xs py-4">
+              No upcoming performances
+            </div>
+          </div>
         </div>
 
         <!-- Main Performance Cards -->
         <div class="lg:col-span-2 flex flex-col h-[calc(100vh-120px)]">
+          <!-- Completion Rate Progress Ring -->
+          <div class="mb-3 bg-gradient-to-r from-gray-800 to-gray-700 border border-player-accent/30 rounded-lg p-3">
+            <div class="flex items-center justify-between">
+              <div class="flex-1">
+                <h3 class="text-xs font-semibold text-gray-300">Event Progress</h3>
+                <p class="text-[10px] text-gray-400">
+                  {{ completedPerformancesCount }} of {{ totalPerformancesCount }} completed
+                </p>
+              </div>
+              <div class="relative w-14 h-14">
+                <!-- Background circle -->
+                <svg class="w-14 h-14 transform -rotate-90">
+                  <circle
+                    cx="28"
+                    cy="28"
+                    r="24"
+                    stroke="currentColor"
+                    stroke-width="4"
+                    fill="none"
+                    class="text-gray-700"
+                  />
+                  <!-- Progress circle -->
+                  <circle
+                    cx="28"
+                    cy="28"
+                    r="24"
+                    stroke="currentColor"
+                    stroke-width="4"
+                    fill="none"
+                    :stroke-dasharray="circumference"
+                    :stroke-dashoffset="progressOffset"
+                    class="text-player-accent transition-all duration-500"
+                    stroke-linecap="round"
+                  />
+                </svg>
+                <!-- Percentage text -->
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <span class="text-sm font-bold text-player-accent">{{ completionPercentage }}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Performance Info Card (Always Visible) -->
           <div
             class="mb-6 border border-player-accent/30 rounded-lg p-6 relative overflow-hidden cover-image-container h-[480px]"
@@ -655,6 +748,26 @@ const artistCloud = computed<ArtistCloudItem[]>(() => {
 const maxArtistCount = computed(() => {
   if (artistCloud.value.length === 0) return 1
   return Math.max(...artistCloud.value.map(a => a.count))
+})
+
+// Timeline items - shows next 5 upcoming performances (not completed)
+const timelineItems = computed(() => {
+  const upcoming = sortedPerformances.value.filter(p => !p.isDone)
+  return upcoming.slice(0, 5)
+})
+
+// Completion rate progress ring
+const totalPerformancesCount = computed(() => sortedPerformances.value.length)
+const completedPerformancesCount = computed(() => sortedPerformances.value.filter(p => p.isDone).length)
+const completionPercentage = computed(() => {
+  if (totalPerformancesCount.value === 0) return 0
+  return Math.round((completedPerformancesCount.value / totalPerformancesCount.value) * 100)
+})
+
+const circumference = computed(() => 2 * Math.PI * 24) // radius is 24
+const progressOffset = computed(() => {
+  const progress = completionPercentage.value / 100
+  return circumference.value * (1 - progress)
 })
 
 // Performance type distribution
