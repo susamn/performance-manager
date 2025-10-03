@@ -641,7 +641,7 @@ let sortable: Sortable | null = null
 
 // Lock state: 'locked' | 'use' | 'unlocked'
 type LockState = 'locked' | 'use' | 'unlocked'
-const lockState = ref<LockState>('use')
+const lockState = ref<LockState>('locked')
 const showUnlockPopup = ref(false)
 const unlockCodeInput = ref('')
 const unlockError = ref('')
