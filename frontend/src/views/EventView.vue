@@ -162,27 +162,54 @@
 
             <!-- Duration Overlay Banner (Always Visible) -->
             <div class="absolute bottom-0 left-0 right-0 bg-black/50 backdrop-blur-sm border-t border-gray-600 rounded-b-lg px-6 py-3">
-              <div v-if="totalDuration > 0" class="flex justify-between items-center">
-                <div class="flex items-center gap-6 text-sm">
-                  <div class="flex items-center gap-2">
-                    <span class="text-gray-400">Total:</span>
-                    <span class="text-white font-medium">{{ formatDuration(totalDuration) }}</span>
+              <!-- Expected Duration (Manually Entered) -->
+              <div v-if="totalDuration > 0" class="mb-2">
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center gap-6 text-sm">
+                    <div class="flex items-center gap-2">
+                      <span class="text-gray-400">Total:</span>
+                      <span class="text-white font-medium">{{ formatDuration(totalDuration) }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-gray-400">Completed:</span>
+                      <span class="text-green-300 font-medium">{{ formatDuration(completedDuration) }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-gray-400">Remaining:</span>
+                      <span class="text-yellow-300 font-medium">{{ formatDuration(remainingDuration) }}</span>
+                    </div>
                   </div>
-                  <div class="flex items-center gap-2">
-                    <span class="text-gray-400">Completed:</span>
-                    <span class="text-green-300 font-medium">{{ formatDuration(completedDuration) }}</span>
+                  <div class="text-xs text-gray-500">
+                    {{ Math.round((completedDuration / totalDuration) * 100) }}% complete
                   </div>
-                  <div class="flex items-center gap-2">
-                    <span class="text-gray-400">Remaining:</span>
-                    <span class="text-yellow-300 font-medium">{{ formatDuration(remainingDuration) }}</span>
-                  </div>
-                </div>
-                <div class="text-xs text-gray-500">
-                  {{ Math.round((completedDuration / totalDuration) * 100) }}% complete
                 </div>
               </div>
-              <div v-else class="text-center text-gray-500 text-sm">
-                No durations set - Add expected durations to see timing overview
+
+              <!-- Resolved Duration (From Track Durations) -->
+              <div v-if="totalResolvedDuration > 0" class="border-t border-gray-700 pt-2">
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center gap-6 text-xs">
+                    <div class="flex items-center gap-2">
+                      <span class="text-gray-500">Resolved Total:</span>
+                      <span class="text-blue-300 font-medium">{{ formatResolvedDuration(totalResolvedDuration) }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-gray-500">Resolved Completed:</span>
+                      <span class="text-blue-200 font-medium">{{ formatResolvedDuration(completedResolvedDuration) }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-gray-500">Resolved Remaining:</span>
+                      <span class="text-blue-100 font-medium">{{ formatResolvedDuration(remainingResolvedDuration) }}</span>
+                    </div>
+                  </div>
+                  <div class="text-xs text-gray-600">
+                    {{ Math.round((completedResolvedDuration / totalResolvedDuration) * 100) }}% done
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="totalDuration === 0 && totalResolvedDuration === 0" class="text-center text-gray-500 text-sm">
+                No durations set - Add expected durations or upload tracks
               </div>
             </div>
           </div>
@@ -410,7 +437,7 @@ const sortedItems = computed(() => {
   return { active: activeItems, completed: completedItems }
 })
 
-// Duration calculations
+// Duration calculations (expectedDuration - manually entered, in minutes)
 const totalDuration = computed(() => {
   const allItems = [...sortedItems.value.active, ...sortedItems.value.completed]
   return allItems.reduce((total, item) => {
@@ -428,6 +455,31 @@ const remainingDuration = computed(() => {
   return totalDuration.value - completedDuration.value
 })
 
+// Resolved duration calculations (from track durations, in seconds)
+const calculateResolvedDuration = (performance: Performance): number => {
+  if (!performance.tracks || performance.tracks.length === 0) return 0
+  return performance.tracks.reduce((total, track) => {
+    return total + (track.duration || 0)
+  }, 0)
+}
+
+const totalResolvedDuration = computed(() => {
+  const allItems = [...sortedItems.value.active, ...sortedItems.value.completed]
+  return allItems.reduce((total, item) => {
+    return total + calculateResolvedDuration(item)
+  }, 0)
+})
+
+const completedResolvedDuration = computed(() => {
+  return sortedItems.value.completed.reduce((total, item) => {
+    return total + calculateResolvedDuration(item)
+  }, 0)
+})
+
+const remainingResolvedDuration = computed(() => {
+  return totalResolvedDuration.value - completedResolvedDuration.value
+})
+
 function formatDuration(minutes: number): string {
   if (minutes === 0) return '0 min'
   const hours = Math.floor(minutes / 60)
@@ -436,6 +488,20 @@ function formatDuration(minutes: number): string {
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
   }
   return `${mins}m`
+}
+
+function formatResolvedDuration(seconds: number): string {
+  if (seconds === 0) return '0 min'
+  const hours = Math.floor(seconds / 3600)
+  const mins = Math.floor((seconds % 3600) / 60)
+  const secs = seconds % 60
+
+  if (hours > 0) {
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
+  } else if (mins > 0) {
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`
+  }
+  return `${secs}s`
 }
 
 onMounted(async () => {

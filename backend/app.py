@@ -15,6 +15,7 @@ from flask import Flask, request, jsonify, send_file, Response
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import magic
+from mutagen import File as MutagenFile
 
 app = Flask(__name__)
 CORS(app)
@@ -190,7 +191,7 @@ class EventManager:
             return True
         return False
 
-    def add_track(self, event_id: str, performance_id: str, filename: str, performer: str) -> Optional[Dict[str, Any]]:
+    def add_track(self, event_id: str, performance_id: str, filename: str, performer: str, file_path: Optional[Path] = None) -> Optional[Dict[str, Any]]:
         """Add a track to a performance within an event"""
         performances = self.load_event_performances(event_id)
         performance = next((p for p in performances if p['id'] == performance_id), None)
@@ -204,6 +205,12 @@ class EventManager:
                 'url': f'/api/events/{event_id}/performances/{performance_id}/files/{filename}',
                 'isCompleted': False
             }
+
+            # Extract audio duration if file path is provided
+            if file_path and file_path.exists():
+                duration = get_audio_duration(file_path)
+                if duration is not None:
+                    track['duration'] = duration
 
             performance['tracks'].append(track)
             self.save_event_performances(event_id, performances)
@@ -370,6 +377,16 @@ def allowed_image_file(filename: str) -> bool:
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
+def get_audio_duration(file_path: Path) -> Optional[int]:
+    """Extract audio duration in seconds from file"""
+    try:
+        audio = MutagenFile(str(file_path))
+        if audio is not None and audio.info is not None:
+            return int(audio.info.length)
+    except Exception as e:
+        logging.warning(f"Could not extract duration from {file_path}: {e}")
+    return None
+
 # Event endpoints
 @app.route('/api/events', methods=['GET'])
 def get_events():
@@ -504,8 +521,8 @@ def create_event_performance(event_id: str):
 
                 file.save(file_path)
 
-                # Add track to performance
-                track = em.add_track(event_id, performance['id'], filename, performer)
+                # Add track to performance with file path for duration extraction
+                track = em.add_track(event_id, performance['id'], filename, performer, file_path)
 
         # Return updated performance with tracks
         updated_performance = em.get_performance(event_id, performance['id'])
@@ -594,8 +611,8 @@ def upload_event_track(event_id: str, performance_id: str):
 
     file.save(file_path)
 
-    # Add track to performance
-    track = em.add_track(event_id, performance_id, filename, performer)
+    # Add track to performance with file path for duration extraction
+    track = em.add_track(event_id, performance_id, filename, performer, file_path)
     if track:
         return jsonify(track), 201
 
@@ -723,7 +740,7 @@ def add_tracks_to_performance(event_id: str, performance_id: str):
                 counter += 1
 
             file.save(file_path)
-            track = em.add_track(event_id, performance_id, filename, performer)
+            track = em.add_track(event_id, performance_id, filename, performer, file_path)
             if track:
                 added_tracks.append(track)
 

@@ -3,7 +3,7 @@ export interface Track {
   filename: string
   performer: string
   url?: string
-  duration?: number
+  duration?: number  // Duration in seconds, extracted from audio file
   isCompleted?: boolean
 }
 
@@ -17,7 +17,8 @@ export interface Performance {
   isDone: boolean
   createdAt: string
   order: number
-  expectedDuration?: number // in minutes
+  expectedDuration?: number // in minutes (manually entered)
+  resolvedDuration?: number // in seconds (calculated from track durations)
 }
 
 export interface Break {
