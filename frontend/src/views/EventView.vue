@@ -243,7 +243,7 @@
 
             <div v-else class="flex-1 overflow-hidden">
               <div ref="performanceContainer" class="h-full overflow-y-auto space-y-3 pr-2 pb-6">
-                <template v-for="item in sortedItems" :key="item.id">
+                <template v-for="item in sortedItems" :key="`${item.type}-${item.id}`">
                   <PerformanceCard
                     v-if="item.type === 'performance'"
                     :performance="getPerformanceFromItem(item)"
@@ -384,6 +384,8 @@ const sortedItems = computed(() => {
     })
   }
 
+
+
   // If a performance is selected, temporarily move it to the top (only if it matches search)
   if (selectedPerformanceId.value) {
     const selectedIndex = allItems.findIndex(item => item.id === selectedPerformanceId.value)
@@ -495,18 +497,10 @@ async function reorderMixedItems(newOrder: { id: string, type: string }[]) {
     newOrder.forEach((item, index) => {
       if (item.type === 'performance') {
         performanceIds.push(item.id)
-        // Update performance order in the store
-        const performance = sortedPerformances.value.find(p => p.id === item.id)
-        if (performance) {
-          performance.order = index
-        }
+
       } else if (item.type === 'break') {
         breakIds.push(item.id)
-        // Update break order locally
-        const breakItem = breaks.value.find(b => b.id === item.id)
-        if (breakItem) {
-          breakItem.order = index
-        }
+
       }
     })
 
@@ -526,6 +520,7 @@ async function reorderMixedItems(newOrder: { id: string, type: string }[]) {
     }
 
     await Promise.all(promises)
+    await loadEventBreaks()
     console.log('Mixed items reordering completed successfully')
   } catch (error) {
     console.error('Error reordering mixed items:', error)
