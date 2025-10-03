@@ -37,8 +37,10 @@
         <div class="lg:col-span-2 flex flex-col h-[calc(100vh-120px)]">
           <!-- Performance Info Card (Always Visible) -->
           <div
-            class="mb-6 border border-player-accent/30 rounded-lg p-6 h-[400px] relative overflow-hidden cover-image-container"
-            :class="!selectedPerformance && event?.coverImage ? 'bg-cover bg-center' : 'bg-gradient-to-r from-gray-800 to-gray-700'"
+            class="mb-6 border border-player-accent/30 rounded-lg p-6 relative overflow-hidden cover-image-container h-[480px]"
+            :class="[
+              !selectedPerformance && event?.coverImage ? 'bg-cover bg-center cover-image-glow' : 'bg-gradient-to-r from-gray-800 to-gray-700'
+            ]"
             :style="!selectedPerformance && event?.coverImage ? {
               backgroundImage: `url(${coverImageUrl})`,
               backgroundPosition: `${event.imagePosition?.x || 50}% ${event.imagePosition?.y || 50}%`
@@ -108,6 +110,28 @@
                   <div class="text-center p-3 bg-purple-600/20 rounded">
                     <p class="text-lg font-semibold text-purple-300">{{ Math.round((selectedPerformance.tracks.filter(t => t.isCompleted).length / selectedPerformance.tracks.length) * 100) }}%</p>
                     <p class="text-xs text-gray-400">Progress</p>
+                  </div>
+                </div>
+
+                <!-- Currently Playing Track -->
+                <div v-if="playerStore.currentTrack && selectedPerformance.tracks.some(t => t.id === playerStore.currentTrack?.id)" class="mt-4 p-3 bg-player-accent/10 border border-player-accent/30 rounded">
+                  <div class="flex items-center gap-3">
+                    <div class="flex-shrink-0">
+                      <div class="w-10 h-10 bg-player-accent/20 rounded-full flex items-center justify-center">
+                        <svg class="w-5 h-5 text-player-accent" :class="{ 'animate-pulse': playState.isPlaying }" fill="currentColor" viewBox="0 0 24 24">
+                          <path v-if="playState.isPlaying" d="M8,5.14V19.14L19,12.14L8,5.14Z" />
+                          <path v-else d="M8,5V19L11,19V5M13,5V19L16,19V5" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-xs text-gray-400 mb-1">Now Playing</p>
+                      <p class="text-sm font-medium text-white truncate">{{ playerStore.currentTrack.filename }}</p>
+                    </div>
+                    <div class="flex-shrink-0 text-right">
+                      <p class="text-sm text-player-accent font-mono">{{ formattedCurrentTime }}</p>
+                      <p class="text-xs text-gray-400 font-mono">{{ formattedDuration }}</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -379,6 +403,11 @@ import type { Performance, Track } from '@/types'
 const route = useRoute()
 const eventStore = useEventStore()
 const playerStore = usePlayerStore()
+
+// Player state references
+const playState = computed(() => playerStore.playState)
+const formattedCurrentTime = computed(() => playerStore.formattedCurrentTime)
+const formattedDuration = computed(() => playerStore.formattedDuration)
 
 const eventId = route.params.eventId as string
 const performanceContainer = ref<HTMLElement>()
@@ -942,5 +971,32 @@ function handleKeydown(event: KeyboardEvent) {
 /* Ensure cover image container can show the shine effect */
 .cover-image-container {
   position: relative;
+}
+
+/* Outer glow effect for cover image */
+.cover-image-glow {
+  box-shadow:
+    0 0 20px rgba(16, 185, 129, 0.3),
+    0 0 40px rgba(16, 185, 129, 0.2),
+    0 0 60px rgba(16, 185, 129, 0.1),
+    0 0 80px rgba(16, 185, 129, 0.05);
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 20px rgba(16, 185, 129, 0.3),
+      0 0 40px rgba(16, 185, 129, 0.2),
+      0 0 60px rgba(16, 185, 129, 0.1),
+      0 0 80px rgba(16, 185, 129, 0.05);
+  }
+  50% {
+    box-shadow:
+      0 0 25px rgba(16, 185, 129, 0.4),
+      0 0 50px rgba(16, 185, 129, 0.3),
+      0 0 75px rgba(16, 185, 129, 0.2),
+      0 0 100px rgba(16, 185, 129, 0.1);
+  }
 }
 </style>
