@@ -25,11 +25,26 @@
           <div class="flex-1 min-w-0">
             <h4 class="text-base font-semibold text-white truncate">{{ performance.name }}</h4>
             <p class="text-sm text-gray-300 truncate">by {{ performance.performer }}</p>
-            <p class="text-xs text-gray-400">
-              {{ performance.type }} • {{ performance.mode }} •
-              {{ performance.tracks.length === 0 ? 'No tracks' : `${performance.tracks.length} track${performance.tracks.length !== 1 ? 's' : ''}` }}
-              • {{ formatDate(performance.createdAt) }}
-            </p>
+            <div class="flex items-center gap-2 mt-1 flex-wrap">
+              <span
+                class="px-2 py-0.5 rounded-full text-xs font-medium border"
+                :style="getTypeStyle(performance.type)"
+              >
+                {{ performance.type }}
+              </span>
+              <span
+                class="px-2 py-0.5 rounded-full text-xs font-medium border"
+                :style="getModeStyle(performance.mode)"
+              >
+                {{ performance.mode }}
+              </span>
+              <span class="text-xs text-gray-400">
+                {{ performance.tracks.length === 0 ? 'No tracks' : `${performance.tracks.length} track${performance.tracks.length !== 1 ? 's' : ''}` }}
+              </span>
+              <span class="text-xs text-gray-400">
+                {{ formatDate(performance.createdAt) }}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -184,6 +199,45 @@ defineEmits<{
 function formatDate(dateString: string): string {
   const date = new Date(dateString)
   return date.toLocaleDateString()
+}
+
+// Color schemes for performance types
+function getTypeStyle(type: string): { backgroundColor: string; borderColor: string; color: string } {
+  const styles: Record<string, { bg: string; border: string; text: string }> = {
+    'Song': { bg: 'rgba(59, 130, 246, 0.15)', border: 'rgba(59, 130, 246, 0.4)', text: 'rgb(147, 197, 253)' },
+    'Dance': { bg: 'rgba(236, 72, 153, 0.15)', border: 'rgba(236, 72, 153, 0.4)', text: 'rgb(249, 168, 212)' },
+    'Recitation': { bg: 'rgba(168, 85, 247, 0.15)', border: 'rgba(168, 85, 247, 0.4)', text: 'rgb(216, 180, 254)' },
+    'Break': { bg: 'rgba(251, 191, 36, 0.15)', border: 'rgba(251, 191, 36, 0.4)', text: 'rgb(253, 224, 71)' }
+  }
+
+  const style = styles[type] || { bg: 'rgba(107, 114, 128, 0.15)', border: 'rgba(107, 114, 128, 0.4)', text: 'rgb(156, 163, 175)' }
+  return {
+    backgroundColor: style.bg,
+    borderColor: style.border,
+    color: style.text
+  }
+}
+
+// Color schemes for performance modes
+function getModeStyle(mode: string): { backgroundColor: string; borderColor: string; color: string } {
+  const styles: Record<string, { bg: string; border: string; text: string }> = {
+    'Solo': { bg: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.4)', text: 'rgb(110, 231, 183)' },
+    'Duet': { bg: 'rgba(245, 158, 11, 0.15)', border: 'rgba(245, 158, 11, 0.4)', text: 'rgb(251, 191, 36)' },
+    'Group': { bg: 'rgba(239, 68, 68, 0.15)', border: 'rgba(239, 68, 68, 0.4)', text: 'rgb(252, 165, 165)' },
+    'Lunch': { bg: 'rgba(20, 184, 166, 0.15)', border: 'rgba(20, 184, 166, 0.4)', text: 'rgb(94, 234, 212)' },
+    'Dinner': { bg: 'rgba(234, 88, 12, 0.15)', border: 'rgba(234, 88, 12, 0.4)', text: 'rgb(253, 186, 116)' },
+    'Broadcast': { bg: 'rgba(99, 102, 241, 0.15)', border: 'rgba(99, 102, 241, 0.4)', text: 'rgb(165, 180, 252)' },
+    'Announcement': { bg: 'rgba(217, 70, 239, 0.15)', border: 'rgba(217, 70, 239, 0.4)', text: 'rgb(240, 171, 252)' },
+    'Appearence': { bg: 'rgba(14, 165, 233, 0.15)', border: 'rgba(14, 165, 233, 0.4)', text: 'rgb(125, 211, 252)' },
+    'Special Show': { bg: 'rgba(251, 146, 60, 0.15)', border: 'rgba(251, 146, 60, 0.4)', text: 'rgb(253, 186, 116)' }
+  }
+
+  const style = styles[mode] || { bg: 'rgba(107, 114, 128, 0.15)', border: 'rgba(107, 114, 128, 0.4)', text: 'rgb(156, 163, 175)' }
+  return {
+    backgroundColor: style.bg,
+    borderColor: style.border,
+    color: style.text
+  }
 }
 </script>
 
