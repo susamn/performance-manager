@@ -369,8 +369,38 @@
         </div>
 
         <!-- Right Media Player -->
-        <div class="lg:col-span-1">
+        <div class="lg:col-span-1 space-y-6">
           <MediaPlayer />
+
+          <!-- Artist Cloud Widget -->
+          <div class="bg-gradient-to-r from-gray-800 to-gray-700 border border-player-accent/30 rounded-lg p-4">
+            <h3 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+              <svg class="w-4 h-4 text-player-accent" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z" />
+              </svg>
+              Artists
+            </h3>
+            <div v-if="artistCloud.length > 0" class="flex flex-wrap gap-2">
+              <span
+                v-for="artist in artistCloud"
+                :key="artist.name"
+                class="px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:scale-105 cursor-default"
+                :style="{
+                  backgroundColor: `rgba(16, 185, 129, ${0.1 + (artist.count / maxArtistCount) * 0.2})`,
+                  borderColor: `rgba(16, 185, 129, ${0.2 + (artist.count / maxArtistCount) * 0.3})`,
+                  borderWidth: '1px',
+                  color: `rgb(${110 + (artist.count / maxArtistCount) * 145}, ${231 - (artist.count / maxArtistCount) * 50}, ${183 - (artist.count / maxArtistCount) * 50})`
+                }"
+                :title="`${artist.count} performance${artist.count !== 1 ? 's' : ''}`"
+              >
+                {{ artist.name }}
+                <span class="ml-1 opacity-70">{{ artist.count }}</span>
+              </span>
+            </div>
+            <div v-else class="text-center text-gray-500 text-xs py-2">
+              No artists yet
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -536,6 +566,55 @@ function formatResolvedDuration(seconds: number): string {
   }
   return `${secs}s`
 }
+
+// Artist cloud computation
+interface ArtistCloudItem {
+  name: string
+  count: number
+}
+
+function parsePerformerNames(performer: string): string[] {
+  if (!performer || !performer.trim()) return []
+
+  // Split by comma, ampersand, and "and"
+  return performer
+    .split(/[,&]|\band\b/i)
+    .map(name => name.trim())
+    .filter(name => name.length > 0)
+    .flatMap(name => {
+      // Further split by spaces if multiple words that look like separate names
+      // But only if they contain capital letters indicating separate names
+      const words = name.split(/\s+/)
+      if (words.length === 1) return [name]
+      return [name] // Keep as full name
+    })
+}
+
+const artistCloud = computed<ArtistCloudItem[]>(() => {
+  const allItems = [...sortedItems.value.active, ...sortedItems.value.completed]
+  const artistMap = new Map<string, number>()
+
+  allItems.forEach(item => {
+    if (item.type !== 'Break' && item.performer) {
+      const artists = parsePerformerNames(item.performer)
+      artists.forEach(artist => {
+        const normalized = artist.trim()
+        if (normalized) {
+          artistMap.set(normalized, (artistMap.get(normalized) || 0) + 1)
+        }
+      })
+    }
+  })
+
+  return Array.from(artistMap.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+})
+
+const maxArtistCount = computed(() => {
+  if (artistCloud.value.length === 0) return 1
+  return Math.max(...artistCloud.value.map(a => a.count))
+})
 
 onMounted(async () => {
   if (eventId) {
