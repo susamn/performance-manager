@@ -31,10 +31,6 @@
             :event-id="eventId"
             @performance-created="onPerformanceCreated"
           />
-          <AddBreakForm
-            :event-id="eventId"
-            @break-created="onBreakCreated"
-          />
         </div>
 
         <!-- Main Performance Cards -->
@@ -223,13 +219,13 @@
               <p class="text-gray-400">Loading performances...</p>
             </div>
 
-            <div v-else-if="sortedItems.length === 0" class="flex-1 flex items-center justify-center">
+            <div v-else-if="sortedItems.active.length === 0 && sortedItems.completed.length === 0" class="flex-1 flex items-center justify-center">
               <div class="text-center">
                 <p v-if="searchQuery.trim()" class="text-gray-400 mb-2">
                   No results found for "{{ searchQuery }}"
                 </p>
                 <p v-else class="text-gray-400 mb-2">
-                  No performances or breaks created yet. Create your first item!
+                  No performances created yet. Create your first item!
                 </p>
                 <button
                   v-if="searchQuery.trim()"
@@ -242,35 +238,76 @@
             </div>
 
             <div v-else class="flex-1 overflow-hidden">
-              <div ref="performanceContainer" class="h-full overflow-y-auto space-y-3 pr-2 pb-6">
-                <template v-for="item in sortedItems" :key="`${item.type}-${item.id}`">
-                  <PerformanceCard
-                    v-if="item.type === 'performance'"
-                    :performance="getPerformanceFromItem(item)"
-                    :is-selected="selectedPerformanceId === item.id"
-                    :disabled="!!(selectedPerformanceId && selectedPerformanceId !== item.id)"
-                    @select="selectPerformance"
-                    @toggle-done="toggleDone"
-                    @edit="editPerformance"
-                    @delete="deletePerformance"
-                    @track-selected="onTrackSelected"
-                    @toggle-track-completion="toggleTrackCompletion"
-                    class="performance-card-item"
-                    :data-id="item.id"
-                    :data-type="item.type"
-                  />
-                  <BreakCard
-                    v-else-if="item.type === 'break'"
-                    :break-item="getBreakFromItem(item)"
-                    :disabled="!!selectedPerformanceId"
-                    @select="selectBreak"
-                    @toggle-done="toggleBreakDone"
-                    @delete="deleteBreak"
-                    class="break-card-item"
-                    :data-id="item.id"
-                    :data-type="item.type"
-                  />
-                </template>
+              <div class="h-full overflow-y-auto pr-2 pb-6">
+                <!-- Active Performances Section -->
+                <div v-if="sortedItems.active.length > 0">
+                  <h3 class="text-lg font-semibold text-white mb-3 sticky top-0 bg-gray-900 py-2 z-10">
+                    Performances
+                  </h3>
+                  <div ref="performanceContainer" class="space-y-3">
+                    <template v-for="item in sortedItems.active" :key="item.id">
+                      <PerformanceCard
+                        v-if="item.type !== 'Break'"
+                        :performance="item"
+                        :is-selected="selectedPerformanceId === item.id"
+                        :disabled="!!(selectedPerformanceId && selectedPerformanceId !== item.id)"
+                        @select="selectPerformance"
+                        @toggle-done="toggleDone"
+                        @edit="editPerformance"
+                        @delete="deletePerformance"
+                        @track-selected="onTrackSelected"
+                        @toggle-track-completion="toggleTrackCompletion"
+                        class="performance-card-item"
+                        :data-id="item.id"
+                      />
+                      <BreakCard
+                        v-else
+                        :break-item="convertPerformanceToBreak(item)"
+                        :disabled="!!selectedPerformanceId"
+                        @select="() => {}"
+                        @toggle-done="() => toggleDone(item)"
+                        @delete="() => deletePerformance(item)"
+                        class="break-card-item"
+                        :data-id="item.id"
+                      />
+                    </template>
+                  </div>
+                </div>
+
+                <!-- Completed Section -->
+                <div v-if="sortedItems.completed.length > 0" class="mt-8">
+                  <h3 class="text-lg font-semibold text-gray-400 mb-3 sticky top-0 bg-gray-900 py-2 z-10">
+                    Completed
+                  </h3>
+                  <div ref="completedContainer" class="space-y-3">
+                    <template v-for="item in sortedItems.completed" :key="item.id">
+                      <PerformanceCard
+                        v-if="item.type !== 'Break'"
+                        :performance="item"
+                        :is-selected="false"
+                        :disabled="false"
+                        @select="selectPerformance"
+                        @toggle-done="toggleDone"
+                        @edit="editPerformance"
+                        @delete="deletePerformance"
+                        @track-selected="onTrackSelected"
+                        @toggle-track-completion="toggleTrackCompletion"
+                        class="performance-card-item completed-item"
+                        :data-id="item.id"
+                      />
+                      <BreakCard
+                        v-else
+                        :break-item="convertPerformanceToBreak(item)"
+                        :disabled="false"
+                        @select="() => {}"
+                        @toggle-done="() => toggleDone(item)"
+                        @delete="() => deletePerformance(item)"
+                        class="break-card-item completed-item"
+                        :data-id="item.id"
+                      />
+                    </template>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -301,13 +338,12 @@ import { useRoute } from 'vue-router'
 import { useEventStore } from '@/stores/event'
 import { usePlayerStore } from '@/stores/player'
 import AddPerformanceForm from '@/components/AddPerformanceForm.vue'
-import AddBreakForm from '@/components/AddBreakForm.vue'
 import PerformanceCard from '@/components/PerformanceCard.vue'
 import BreakCard from '@/components/BreakCard.vue'
 import MediaPlayer from '@/components/MediaPlayer.vue'
 import EditPerformanceModal from '@/components/EditPerformanceModal.vue'
 import Sortable from 'sortablejs'
-import type { Performance, Track, Break } from '@/types'
+import type { Performance, Track } from '@/types'
 
 const route = useRoute()
 const eventStore = useEventStore()
@@ -341,77 +377,51 @@ const coverImageUrl = computed(() => {
 const editModalVisible = ref(false)
 const performanceToEdit = ref<Performance | null>(null)
 
-// Break state
-const breaks = ref<Break[]>([])
-const sortedBreaks = computed(() =>
-  [...breaks.value].sort((a, b) => a.order - b.order)
-)
-
-// Combined items (performances + breaks) sorted by order
+// All items are now performances (including breaks which have type='Break')
 const sortedItems = computed(() => {
-  const performances = sortedPerformances.value.map(p => ({ ...p, type: 'performance' as const }))
-  const breaksWithType = sortedBreaks.value.map(b => ({ ...b, type: 'break' as const }))
-
-  let allItems = [...performances, ...breaksWithType].sort((a, b) => a.order - b.order)
+  let allItems = [...sortedPerformances.value]
 
   // Apply search filter
   if (searchQuery.value.trim()) {
     const query = searchQuery.value.toLowerCase().trim()
     allItems = allItems.filter(item => {
-      if (item.type === 'performance') {
-        const performance = item as any
-        // Search in performance name, performer, type, and mode
-        const searchFields = [
-          performance.name,
-          performance.performer,
-          performance.type,
-          performance.mode
-        ].filter(Boolean).map(field => field.toLowerCase())
+      // Search in performance name, performer, type, and mode
+      const searchFields = [
+        item.name,
+        item.performer,
+        item.type,
+        item.mode
+      ].filter(Boolean).map(field => field.toLowerCase())
 
-        // Also search in track filenames
-        if (performance.tracks && performance.tracks.length > 0) {
-          const trackNames = performance.tracks.map((track: any) => track.filename.toLowerCase())
-          searchFields.push(...trackNames)
-        }
-
-        return searchFields.some(field => field.includes(query))
-      } else if (item.type === 'break') {
-        const breakItem = item as any
-        // Search in break name
-        return breakItem.name.toLowerCase().includes(query)
+      // Also search in track filenames
+      if (item.tracks && item.tracks.length > 0) {
+        const trackNames = item.tracks.map((track: any) => track.filename.toLowerCase())
+        searchFields.push(...trackNames)
       }
-      return false
+
+      return searchFields.some(field => field.includes(query))
     })
   }
 
+  // Separate into active and completed
+  const activeItems = allItems.filter(item => !item.isDone)
+  const completedItems = allItems.filter(item => item.isDone)
 
-
-  // If a performance is selected, temporarily move it to the top (only if it matches search)
-  if (selectedPerformanceId.value) {
-    const selectedIndex = allItems.findIndex(item => item.id === selectedPerformanceId.value)
-    if (selectedIndex > 0) {
-      const selectedItem = allItems[selectedIndex]
-      const otherItems = allItems.filter(item => item.id !== selectedPerformanceId.value)
-      return [selectedItem, ...otherItems]
-    }
-  }
-
-  return allItems
+  return { active: activeItems, completed: completedItems }
 })
 
 // Duration calculations
 const totalDuration = computed(() => {
-  return sortedItems.value.reduce((total, item) => {
+  const allItems = [...sortedItems.value.active, ...sortedItems.value.completed]
+  return allItems.reduce((total, item) => {
     return total + (item.expectedDuration || 0)
   }, 0)
 })
 
 const completedDuration = computed(() => {
-  return sortedItems.value
-    .filter(item => item.isDone)
-    .reduce((total, item) => {
-      return total + (item.expectedDuration || 0)
-    }, 0)
+  return sortedItems.value.completed.reduce((total, item) => {
+    return total + (item.expectedDuration || 0)
+  }, 0)
 })
 
 const remainingDuration = computed(() => {
@@ -431,7 +441,6 @@ function formatDuration(minutes: number): string {
 onMounted(async () => {
   if (eventId) {
     await eventStore.selectEvent(eventId)
-    await loadEventBreaks()
   }
   document.addEventListener('keydown', handleKeydown)
 })
@@ -456,31 +465,28 @@ function initializeSortable() {
     sortable = null
   }
 
-  if (performanceContainer.value && sortedItems.value.length > 0) {
-    console.log('Initializing sortable with', sortedItems.value.length, 'items')
+  if (performanceContainer.value && sortedItems.value.active.length > 0) {
+    console.log('Initializing sortable with', sortedItems.value.active.length, 'items')
     sortable = new Sortable(performanceContainer.value, {
       animation: 150,
       handle: '.drag-handle',
       ghostClass: 'sortable-ghost',
       chosenClass: 'sortable-chosen',
       dragClass: 'sortable-drag',
-      filter: '.performance-card.done, .break-card.done',
-      preventOnFilter: false,
+      forceFallback: true,
+      fallbackOnBody: true,
+      swapThreshold: 0.65,
       onStart: (evt) => {
         console.log('Drag started', evt)
       },
-      onEnd: (evt: Sortable.SortableEvent) => {
+      onEnd: async (evt: Sortable.SortableEvent) => {
         console.log('Drag ended', evt)
         if (evt.oldIndex !== undefined && evt.newIndex !== undefined && evt.oldIndex !== evt.newIndex) {
           const newOrder = Array.from(performanceContainer.value!.children)
-            .map(el => {
-              const id = (el as HTMLElement).dataset.id!
-              const type = (el as HTMLElement).dataset.type!
-              return { id, type }
-            })
-            .filter(item => item.id && item.type)
+            .map(el => (el as HTMLElement).dataset.id!)
+            .filter(id => id)
           console.log('Reordering to:', newOrder)
-          reorderMixedItems(newOrder)
+          await reorderPerformances(newOrder)
         }
       }
     })
@@ -488,52 +494,21 @@ function initializeSortable() {
   }
 }
 
-async function reorderMixedItems(newOrder: { id: string, type: string }[]) {
+async function reorderPerformances(newOrder: string[]) {
   try {
-    // Separate performances and breaks from the new order
-    const performanceIds: string[] = []
-    const breakIds: string[] = []
-
-    newOrder.forEach((item, index) => {
-      if (item.type === 'performance') {
-        performanceIds.push(item.id)
-
-      } else if (item.type === 'break') {
-        breakIds.push(item.id)
-
-      }
-    })
-
-    // Send requests to both endpoints in parallel
-    const promises = []
-
-    if (performanceIds.length > 0) {
-      promises.push(eventStore.reorderPerformances(eventId, performanceIds))
-    }
-
-    if (breakIds.length > 0) {
-      promises.push(fetch(`/api/events/${eventId}/breaks/reorder`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ order: breakIds })
-      }))
-    }
-
-    await Promise.all(promises)
-    await loadEventBreaks()
-    console.log('Mixed items reordering completed successfully')
+    await eventStore.reorderPerformances(eventId, newOrder)
+    console.log('Performances reordering completed successfully')
   } catch (error) {
-    console.error('Error reordering mixed items:', error)
-    // Reload both performances and breaks to restore correct order
+    console.error('Error reordering performances:', error)
     await eventStore.loadEventPerformances(eventId)
-    await loadEventBreaks()
   }
 }
 
 async function onPerformanceCreated(performance: Performance) {
-  // Calculate the order for the new performance (after all existing items)
+  // Calculate the order for the new performance (after all existing active items)
+  const allItems = [...sortedItems.value.active, ...sortedItems.value.completed]
   const maxOrder = Math.max(
-    ...sortedItems.value.map(item => item.order),
+    ...allItems.map(item => item.order),
     -1
   )
 
@@ -567,7 +542,30 @@ async function toggleDone(performance: Performance) {
   const wasSelected = selectedPerformanceId.value === performance.id
   const wasDone = performance.isDone
 
-  await eventStore.togglePerformanceDone(eventId, performance)
+  // If unmarking as done, we need to move it to top of active list
+  if (wasDone) {
+    // Find the minimum order in active items
+    const activeItems = sortedPerformances.value.filter(p => !p.isDone && p.id !== performance.id)
+    const minOrder = activeItems.length > 0 ? Math.min(...activeItems.map(p => p.order)) : 0
+
+    // Update the performance to be at the top (order -1 or less than min)
+    try {
+      await fetch(`/api/events/${eventId}/performances/${performance.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isDone: false,
+          order: minOrder - 1
+        })
+      })
+      await eventStore.loadEventPerformances(eventId)
+    } catch (error) {
+      console.error('Error updating performance:', error)
+    }
+  } else {
+    // Marking as done - just toggle the status
+    await eventStore.togglePerformanceDone(eventId, performance)
+  }
 
   // If the performance was marked as done and was selected, deselect it
   if (wasSelected && !wasDone) {
@@ -636,87 +634,16 @@ function formatDate(dateString: string): string {
   return date.toLocaleDateString()
 }
 
-// Helper functions to extract original types from items with added type property
-function getPerformanceFromItem(item: any): Performance {
-  const { type, ...performance } = item
-  return performance as Performance
-}
-
-function getBreakFromItem(item: any): Break {
-  const { type: itemType, ...breakItem } = item
-  return breakItem as Break
-}
-
-// Break management functions
-async function loadEventBreaks() {
-  try {
-    const response = await fetch(`/api/events/${eventId}/breaks`)
-    if (response.ok) {
-      breaks.value = await response.json()
-    }
-  } catch (error) {
-    console.error('Error loading breaks:', error)
-  }
-}
-
-async function onBreakCreated(breakObj: Break) {
-  // Calculate the order for the new break (after last performance)
-  const maxOrder = Math.max(
-    ...sortedItems.value.map(item => item.order),
-    -1
-  )
-
-  // Update the break order to be after all existing items
-  try {
-    await fetch(`/api/events/${eventId}/breaks/${breakObj.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order: maxOrder + 1 })
-    })
-  } catch (error) {
-    console.error('Error setting break order:', error)
-  }
-
-  await loadEventBreaks()
-}
-
-function selectBreak(breakItem: Break) {
-  // User specified that clicking on a break should NOT load the performance info dialog
-  // So we'll just handle this as a simple click without affecting the selected performance
-  console.log('Break selected:', breakItem.name)
-}
-
-async function toggleBreakDone(breakItem: Break) {
-  try {
-    const response = await fetch(`/api/events/${eventId}/breaks/${breakItem.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isDone: !breakItem.isDone })
-    })
-
-    if (response.ok) {
-      await loadEventBreaks()
-    }
-  } catch (error) {
-    console.error('Error updating break:', error)
-    alert('Failed to update break. Please try again.')
-  }
-}
-
-async function deleteBreak(breakItem: Break) {
-  if (confirm(`Are you sure you want to delete the break "${breakItem.name}"?`)) {
-    try {
-      const response = await fetch(`/api/events/${eventId}/breaks/${breakItem.id}`, {
-        method: 'DELETE'
-      })
-
-      if (response.ok) {
-        await loadEventBreaks()
-      }
-    } catch (error) {
-      console.error('Error deleting break:', error)
-      alert('Failed to delete break. Please try again.')
-    }
+// Helper function to convert Performance with type='Break' to Break format
+function convertPerformanceToBreak(performance: Performance): any {
+  return {
+    id: performance.id,
+    name: performance.name,
+    type: performance.mode as any, // mode contains the break type
+    isDone: performance.isDone,
+    createdAt: performance.createdAt,
+    order: performance.order,
+    expectedDuration: performance.expectedDuration
   }
 }
 
@@ -815,6 +742,15 @@ function handleKeydown(event: KeyboardEvent) {
 
 :deep(.drag-handle:active) {
   cursor: grabbing !important;
+}
+
+/* Completed items styling */
+:deep(.completed-item) {
+  opacity: 0.7;
+}
+
+:deep(.completed-item:hover) {
+  opacity: 0.85;
 }
 
 /* Custom scrollbar styling for performance list */

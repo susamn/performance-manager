@@ -4,7 +4,8 @@
     :class="{
       'selected': isSelected,
       'done': performance.isDone,
-      'disabled': disabled
+      'disabled': disabled,
+      'break-type': performance.type === 'Break'
     }"
   >
     <!-- Main Performance Card View -->
@@ -184,5 +185,21 @@ function formatDate(dateString: string): string {
 
 .performance-card.disabled .drag-handle {
   pointer-events: auto;
+}
+
+.performance-card.break-type {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(99, 102, 241, 0.1));
+  border: 1px dashed rgba(59, 130, 246, 0.3);
+  backdrop-filter: blur(1px);
+}
+
+.performance-card.break-type:hover {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(99, 102, 241, 0.2));
+  border-color: rgba(59, 130, 246, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+.performance-card.break-type.done {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(99, 102, 241, 0.05));
 }
 </style>

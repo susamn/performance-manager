@@ -11,8 +11,8 @@ export interface Performance {
   id: string
   name: string
   performer: string
-  type: 'Song' | 'Dance' | 'Recitation'
-  mode: 'Solo' | 'Duet' | 'Group'
+  type: 'Song' | 'Dance' | 'Recitation' | 'Break'
+  mode: 'Solo' | 'Duet' | 'Group' | 'Lunch' | 'Dinner' | 'Broadcast' | 'Announcement' | 'Appearence' | 'Special Show'
   tracks: Track[]
   isDone: boolean
   createdAt: string

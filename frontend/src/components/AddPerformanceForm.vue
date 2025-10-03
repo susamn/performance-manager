@@ -5,19 +5,19 @@
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <div>
         <label for="performanceName" class="block text-sm font-medium text-gray-300 mb-2">
-          Performance Name *
+          {{ isBreakType ? 'Break Name' : 'Performance Name' }} *
         </label>
         <input
           id="performanceName"
           v-model="performanceName"
           type="text"
           required
-          placeholder="Enter performance name"
+          :placeholder="isBreakType ? 'Enter break name' : 'Enter performance name'"
           class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white"
         />
       </div>
 
-      <div>
+      <div v-if="!isBreakType">
         <label for="performerName" class="block text-sm font-medium text-gray-300 mb-2">
           Performer Name *
         </label>
@@ -25,13 +25,13 @@
           id="performerName"
           v-model="performerName"
           type="text"
-          required
+          :required="!isBreakType"
           placeholder="Enter performer name"
           class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white"
         />
       </div>
 
-      <div class="grid grid-cols-3 gap-3">
+      <div class="grid gap-3" :class="isBreakType ? 'grid-cols-2' : 'grid-cols-3'">
         <div>
           <label for="performanceType" class="block text-sm font-medium text-gray-300 mb-2">
             Type *
@@ -40,22 +40,43 @@
             id="performanceType"
             v-model="performanceType"
             required
+            @change="handleTypeChange"
             class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white"
           >
             <option value="Song">Song</option>
             <option value="Dance">Dance</option>
             <option value="Recitation">Recitation</option>
+            <option value="Break">Break</option>
           </select>
         </div>
 
-        <div>
+        <div v-if="isBreakType">
+          <label for="breakSubType" class="block text-sm font-medium text-gray-300 mb-2">
+            Break Type *
+          </label>
+          <select
+            id="breakSubType"
+            v-model="breakSubType"
+            required
+            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white"
+          >
+            <option value="Lunch">Lunch</option>
+            <option value="Dinner">Dinner</option>
+            <option value="Broadcast">Broadcast</option>
+            <option value="Announcement">Announcement</option>
+            <option value="Appearence">Appearence</option>
+            <option value="Special Show">Special Show</option>
+          </select>
+        </div>
+
+        <div v-if="!isBreakType">
           <label for="performanceMode" class="block text-sm font-medium text-gray-300 mb-2">
             Mode *
           </label>
           <select
             id="performanceMode"
             v-model="performanceMode"
-            required
+            :required="!isBreakType"
             class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white"
           >
             <option value="Solo">Solo</option>
@@ -66,7 +87,7 @@
 
         <div>
           <label for="expectedDuration" class="block text-sm font-medium text-gray-300 mb-2">
-            Duration
+            Duration (min)
           </label>
           <input
             id="expectedDuration"
@@ -79,7 +100,7 @@
         </div>
       </div>
 
-      <div>
+      <div v-if="!isBreakType">
         <label for="audioFiles" class="block text-sm font-medium text-gray-300 mb-2">
           Audio Files (optional)
         </label>
@@ -105,7 +126,7 @@
       <div class="flex space-x-3">
         <button
           type="submit"
-          :disabled="isCreating || !performanceName.trim() || !performerName.trim()"
+          :disabled="isCreating || !performanceName.trim() || (!isBreakType && !performerName.trim())"
           class="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {{ isCreating ? 'Creating...' : 'Create' }}
@@ -124,7 +145,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useEventStore } from '@/stores/event'
 import type { Performance } from '@/types'
 
@@ -140,11 +161,24 @@ const eventStore = useEventStore()
 
 const performanceName = ref('')
 const performerName = ref('')
-const performanceType = ref<'Song' | 'Dance' | 'Recitation'>('Song')
+const performanceType = ref<'Song' | 'Dance' | 'Recitation' | 'Break'>('Song')
 const performanceMode = ref<'Solo' | 'Duet' | 'Group'>('Solo')
+const breakSubType = ref<'Lunch' | 'Dinner' | 'Broadcast' | 'Announcement' | 'Appearence' | 'Special Show'>('Lunch')
 const expectedDuration = ref<number | undefined>(undefined)
 const selectedFiles = ref<File[]>([])
 const isCreating = ref(false)
+
+const isBreakType = computed(() => performanceType.value === 'Break')
+
+function handleTypeChange() {
+  if (isBreakType.value) {
+    selectedFiles.value = []
+    const fileInput = document.getElementById('audioFiles') as HTMLInputElement
+    if (fileInput) {
+      fileInput.value = ''
+    }
+  }
+}
 
 function handleFileSelect(event: Event) {
   const target = event.target as HTMLInputElement
@@ -162,24 +196,34 @@ function formatFileSize(bytes: number): string {
 }
 
 async function handleSubmit() {
-  if (!performanceName.value.trim() || !performerName.value.trim()) return
+  if (!performanceName.value.trim() || (!isBreakType.value && !performerName.value.trim())) return
 
   isCreating.value = true
 
   try {
     const formData = new FormData()
     formData.append('name', performanceName.value.trim())
-    formData.append('performer', performerName.value.trim())
-    formData.append('type', performanceType.value)
-    formData.append('mode', performanceMode.value)
+
+    if (isBreakType.value) {
+      // For breaks, use breakSubType as the mode field
+      formData.append('performer', '')
+      formData.append('type', 'Break')
+      formData.append('mode', breakSubType.value)
+    } else {
+      formData.append('performer', performerName.value.trim())
+      formData.append('type', performanceType.value)
+      formData.append('mode', performanceMode.value)
+    }
 
     if (expectedDuration.value && expectedDuration.value > 0) {
       formData.append('expectedDuration', expectedDuration.value.toString())
     }
 
-    selectedFiles.value.forEach((file, index) => {
-      formData.append('files', file)
-    })
+    if (!isBreakType.value) {
+      selectedFiles.value.forEach((file, index) => {
+        formData.append('files', file)
+      })
+    }
 
     const response = await fetch(`/api/events/${props.eventId}/performances`, {
       method: 'POST',
@@ -206,6 +250,7 @@ function clearForm() {
   performerName.value = ''
   performanceType.value = 'Song'
   performanceMode.value = 'Solo'
+  breakSubType.value = 'Lunch'
   expectedDuration.value = undefined
   selectedFiles.value = []
   const fileInput = document.getElementById('audioFiles') as HTMLInputElement

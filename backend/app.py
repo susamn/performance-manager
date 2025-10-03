@@ -7,6 +7,9 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Any, Optional
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 from flask import Flask, request, jsonify, send_file, Response
 from flask_cors import CORS
@@ -846,6 +849,7 @@ def reorder_event_breaks(event_id: str):
     if not isinstance(new_order, list):
         return jsonify({'error': 'Order must be an array'}), 400
 
+    app.logger.info(f"Received new break order: {new_order}")
     breaks = em.load_event_breaks(event_id)
 
     # Create a mapping of id to break
@@ -859,13 +863,10 @@ def reorder_event_breaks(event_id: str):
             break_obj['order'] = index
             reordered_breaks.append(break_obj)
 
-    # Add any breaks not in the new order at the end
-    for break_obj in breaks:
-        if break_obj['id'] not in new_order:
-            break_obj['order'] = len(reordered_breaks)
-            reordered_breaks.append(break_obj)
+
 
     em.save_event_breaks(event_id, reordered_breaks)
+    app.logger.info(f"Saved new break order: {reordered_breaks}")
     return jsonify({'message': 'Breaks reordered successfully'})
 
 # Event cover image endpoints
