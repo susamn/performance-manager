@@ -191,7 +191,7 @@
 
           <!-- Performance Info Card (Always Visible) -->
           <div
-            class="mb-6 border border-player-accent/30 rounded-lg p-6 relative overflow-hidden cover-image-container h-[480px]"
+            class="mb-6 border border-player-accent/30 rounded-lg p-6 relative overflow-hidden cover-image-container h-[408px]"
             :class="[
               !selectedPerformance && event?.coverImage ? 'bg-cover bg-center cover-image-glow' : 'bg-gradient-to-r from-gray-800 to-gray-700'
             ]"
