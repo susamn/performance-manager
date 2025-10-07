@@ -14,7 +14,6 @@ logging.basicConfig(level=logging.INFO)
 from flask import Flask, request, jsonify, send_file, Response
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
-import magic
 from mutagen import File as MutagenFile
 
 app = Flask(__name__)
