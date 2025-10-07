@@ -14,7 +14,7 @@
               </svg>
             </button>
             <div>
-              <h1 class="text-xl font-bold">{{ event?.name || 'Event' }}</h1>
+              <h1 class="text-lg font-bold">{{ event?.name || 'Event' }}</h1>
               <p v-if="event?.description" class="text-sm text-gray-400">{{ event.description }}</p>
             </div>
           </div>
@@ -125,14 +125,14 @@
                   </div>
                   <div class="flex items-center gap-1 flex-wrap">
                     <span
-                      class="px-1.5 py-0.5 rounded text-[10px] font-medium border"
+                      class="px-1.5 py-0.5 rounded text-xs font-medium border"
                       :style="getTypeStyle(item.type)"
                     >
                       {{ item.type }}
                     </span>
-                    <span class="text-[10px] text-gray-400 truncate">{{ item.performer }}</span>
+                    <span class="text-xs text-gray-400 truncate">{{ item.performer }}</span>
                   </div>
-                  <div v-if="item.expectedDuration" class="mt-1 text-[10px] text-gray-500">
+                  <div v-if="item.expectedDuration" class="mt-1 text-xs text-gray-500">
                     {{ formatDuration(item.expectedDuration) }}
                   </div>
                 </div>
@@ -156,12 +156,12 @@
                   <circle cx="22" cy="22" r="20" stroke="currentColor" stroke-width="2.5" fill="none" :stroke-dasharray="circumference" :stroke-dashoffset="progressOffset" class="text-player-accent transition-all duration-500" stroke-linecap="round" />
                 </svg>
                 <div class="absolute inset-0 flex items-center justify-center">
-                  <span class="text-[0.75rem] font-bold text-player-accent">{{ completionPercentage }}%</span>
+                  <span class="text-xs font-bold text-player-accent">{{ completionPercentage }}%</span>
                 </div>
               </div>
 
               <!-- Progress Count -->
-              <div class="flex items-center gap-2 text-[0.75rem]">
+              <div class="flex items-center gap-2 text-xs">
                 <span class="text-gray-400">Count:</span>
                 <span class="text-gray-200 font-medium">{{ totalPerformancesCount }}</span>
                 <span class="text-gray-600">|</span>
@@ -174,7 +174,7 @@
               <div class="h-6 w-px bg-gray-600"></div>
 
               <!-- Expected Duration -->
-              <div class="flex items-center gap-2 text-[0.75rem]">
+              <div class="flex items-center gap-2 text-xs">
                 <svg class="w-2.5 h-2.5 text-gray-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z" />
                 </svg>
@@ -190,7 +190,7 @@
               <div class="h-6 w-px bg-gray-600"></div>
 
               <!-- Actual Duration -->
-              <div class="flex items-center gap-2 text-[0.75rem]">
+              <div class="flex items-center gap-2 text-xs">
                 <span class="text-gray-500">Actual:</span>
                 <span class="text-blue-300 font-medium">{{ totalResolvedDuration > 0 ? formatResolvedDuration(totalResolvedDuration) : 'N/A' }}</span>
                 <span class="text-gray-600">|</span>
@@ -220,7 +220,7 @@
             <div v-if="selectedPerformance">
               <div class="flex items-start justify-between mb-3">
                 <div class="flex-1">
-                  <h3 class="text-base font-bold text-white mb-1.5">{{ selectedPerformance.name }}</h3>
+                  <h3 class="text-sm font-bold text-white mb-1.5">{{ selectedPerformance.name }}</h3>
                   <p class="text-sm text-gray-300 mb-2">by {{ selectedPerformance.performer }}</p>
                   <div class="flex flex-wrap gap-2 text-sm">
                     <div class="flex items-center gap-1.5">
@@ -259,23 +259,23 @@
 
               <!-- Track Summary for Selected Performance (non-interactive, just counts) -->
               <div v-if="selectedPerformance.tracks.length > 0" class="border-t border-gray-600 pt-4 pb-8">
-                <h4 class="text-[11px] font-medium text-gray-400 mb-2">Track Summary</h4>
+                <h4 class="text-xs font-medium text-gray-400 mb-2">Track Summary</h4>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
                   <div class="text-center p-2 bg-gray-700/30 rounded">
-                    <p class="text-base font-semibold text-white">{{ selectedPerformance.tracks.length }}</p>
-                    <p class="text-[11px] text-gray-400">Total Tracks</p>
+                    <p class="text-sm font-semibold text-white">{{ selectedPerformance.tracks.length }}</p>
+                    <p class="text-xs text-gray-400">Total Tracks</p>
                   </div>
                   <div class="text-center p-2 bg-green-600/20 rounded">
-                    <p class="text-base font-semibold text-green-300">{{ selectedPerformance.tracks.filter(t => t.isCompleted).length }}</p>
-                    <p class="text-[11px] text-gray-400">Completed</p>
+                    <p class="text-sm font-semibold text-green-300">{{ selectedPerformance.tracks.filter(t => t.isCompleted).length }}</p>
+                    <p class="text-xs text-gray-400">Completed</p>
                   </div>
                   <div class="text-center p-2 bg-yellow-600/20 rounded">
-                    <p class="text-base font-semibold text-yellow-300">{{ selectedPerformance.tracks.filter(t => !t.isCompleted).length }}</p>
-                    <p class="text-[11px] text-gray-400">Remaining</p>
+                    <p class="text-sm font-semibold text-yellow-300">{{ selectedPerformance.tracks.filter(t => !t.isCompleted).length }}</p>
+                    <p class="text-xs text-gray-400">Remaining</p>
                   </div>
                   <div class="text-center p-2 bg-purple-600/20 rounded">
-                    <p class="text-base font-semibold text-purple-300">{{ Math.round((selectedPerformance.tracks.filter(t => t.isCompleted).length / selectedPerformance.tracks.length) * 100) }}%</p>
-                    <p class="text-[11px] text-gray-400">Progress</p>
+                    <p class="text-sm font-semibold text-purple-300">{{ Math.round((selectedPerformance.tracks.filter(t => t.isCompleted).length / selectedPerformance.tracks.length) * 100) }}%</p>
+                    <p class="text-xs text-gray-400">Progress</p>
                   </div>
                 </div>
 
@@ -291,10 +291,10 @@
                       </div>
                     </div>
                     <div class="flex-1 min-w-0">
-                      <p class="text-[10px] font-medium text-white truncate">{{ playerStore.currentTrack.filename }}</p>
+                      <p class="text-xs font-medium text-white truncate">{{ playerStore.currentTrack.filename }}</p>
                     </div>
                     <div class="flex-shrink-0 text-right">
-                      <p class="text-[10px] text-player-accent font-mono">{{ formattedCurrentTime }} / {{ formattedDuration }}</p>
+                      <p class="text-xs text-player-accent font-mono">{{ formattedCurrentTime }} / {{ formattedDuration }}</p>
                     </div>
                   </div>
                 </div>

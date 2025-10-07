@@ -23,7 +23,7 @@
           </div>
 
           <div class="flex-1 min-w-0">
-            <h4 class="text-base font-semibold text-white truncate">{{ performance.name }}</h4>
+            <h4 class="text-sm font-semibold text-white truncate">{{ performance.name }}</h4>
             <p class="text-sm text-gray-300 truncate">by {{ performance.performer }}</p>
             <div class="flex items-center gap-2 mt-1 flex-wrap">
               <span

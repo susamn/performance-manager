@@ -1,6 +1,6 @@
 <template>
   <div class="bg-card-bg border border-gray-600 rounded-lg p-6">
-    <h2 class="text-xl font-semibold text-white mb-4">Add Performance</h2>
+    <h2 class="text-lg font-semibold text-white mb-4">Add Performance</h2>
 
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <div>
