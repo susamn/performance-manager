@@ -156,13 +156,20 @@ export const useEventStore = defineStore('event', () => {
         body: JSON.stringify({ order: newOrder }),
       })
       if (!response.ok) throw new Error('Failed to reorder performances')
+
+      // IMPORTANT: Update order only for performances in newOrder list
+      // Preserve ALL other performances with their existing order
       const performanceMap = new Map(eventPerformances.value.map(p => [p.id, p]))
-      const filteredPerformances = newOrder
-        .map(id => performanceMap.get(id))
-        .filter(Boolean) as Performance[]
-      const reorderedPerformances = filteredPerformances
-        .map((p, index) => ({ ...p, order: index }))
-      eventPerformances.value = reorderedPerformances
+
+      newOrder.forEach((id, index) => {
+        const perf = performanceMap.get(id)
+        if (perf) {
+          perf.order = index
+        }
+      })
+
+      // Keep ALL performances, not just the reordered ones
+      eventPerformances.value = Array.from(performanceMap.values())
     } catch (error) {
       console.error('Error reordering performances:', error)
       throw error

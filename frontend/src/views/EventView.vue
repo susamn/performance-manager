@@ -146,52 +146,64 @@
 
         <!-- Main Performance Cards -->
         <div class="lg:col-span-2 flex flex-col h-[calc(100vh-120px)]">
-          <!-- Completion Rate Progress Ring -->
-          <div class="mb-3 bg-gradient-to-r from-gray-800 to-gray-700 border border-player-accent/30 rounded-lg p-3">
-            <div class="flex items-center justify-between">
-              <div class="flex-1">
-                <h3 class="text-xs font-semibold text-gray-300">Event Progress</h3>
-                <p class="text-[10px] text-gray-400">
-                  {{ completedPerformancesCount }} of {{ totalPerformancesCount }} completed
-                </p>
-              </div>
-              <div class="relative w-14 h-14">
-                <!-- Background circle -->
-                <svg class="w-14 h-14 transform -rotate-90">
-                  <circle
-                    cx="28"
-                    cy="28"
-                    r="24"
-                    stroke="currentColor"
-                    stroke-width="4"
-                    fill="none"
-                    class="text-gray-700"
-                  />
-                  <!-- Progress circle -->
-                  <circle
-                    cx="28"
-                    cy="28"
-                    r="24"
-                    stroke="currentColor"
-                    stroke-width="4"
-                    fill="none"
-                    :stroke-dasharray="circumference"
-                    :stroke-dashoffset="progressOffset"
-                    class="text-player-accent transition-all duration-500"
-                    stroke-linecap="round"
-                  />
+          <!-- Event Progress Wizard - Single Compact Rectangle -->
+          <div class="mb-6 h-11">
+            <div class="bg-gradient-to-br from-gray-800 to-gray-700 border border-player-accent/30 rounded-lg px-3 py-2 flex items-center justify-between gap-4">
+              <!-- Progress Ring -->
+              <div class="relative w-11 h-11 flex-shrink-0">
+                <svg class="w-11 h-11 transform -rotate-90">
+                  <circle cx="22" cy="22" r="20" stroke="currentColor" stroke-width="2.5" fill="none" class="text-gray-700" />
+                  <circle cx="22" cy="22" r="20" stroke="currentColor" stroke-width="2.5" fill="none" :stroke-dasharray="circumference" :stroke-dashoffset="progressOffset" class="text-player-accent transition-all duration-500" stroke-linecap="round" />
                 </svg>
-                <!-- Percentage text -->
                 <div class="absolute inset-0 flex items-center justify-center">
-                  <span class="text-sm font-bold text-player-accent">{{ completionPercentage }}%</span>
+                  <span class="text-[0.75rem] font-bold text-player-accent">{{ completionPercentage }}%</span>
                 </div>
+              </div>
+
+              <!-- Progress Count -->
+              <div class="flex items-center gap-2 text-[0.75rem]">
+                <span class="text-gray-400">Count:</span>
+                <span class="text-gray-200 font-medium">{{ totalPerformancesCount }}</span>
+                <span class="text-gray-600">|</span>
+                <span class="text-green-400 font-medium">{{ completedPerformancesCount }}</span>
+                <span class="text-gray-600">|</span>
+                <span class="text-yellow-400 font-medium">{{ totalPerformancesCount - completedPerformancesCount }}</span>
+              </div>
+
+              <!-- Divider -->
+              <div class="h-6 w-px bg-gray-600"></div>
+
+              <!-- Expected Duration -->
+              <div class="flex items-center gap-2 text-[0.75rem]">
+                <svg class="w-2.5 h-2.5 text-gray-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z" />
+                </svg>
+                <span class="text-gray-400">Time:</span>
+                <span class="text-gray-200 font-medium">{{ totalDuration > 0 ? formatDuration(totalDuration) : 'N/A' }}</span>
+                <span class="text-gray-600">|</span>
+                <span class="text-green-400 font-medium">{{ totalDuration > 0 ? formatDuration(completedDuration) : 'N/A' }}</span>
+                <span class="text-gray-600">|</span>
+                <span class="text-yellow-400 font-medium">{{ totalDuration > 0 ? formatDuration(remainingDuration) : 'N/A' }}</span>
+              </div>
+
+              <!-- Divider -->
+              <div class="h-6 w-px bg-gray-600"></div>
+
+              <!-- Actual Duration -->
+              <div class="flex items-center gap-2 text-[0.75rem]">
+                <span class="text-gray-500">Actual:</span>
+                <span class="text-blue-300 font-medium">{{ totalResolvedDuration > 0 ? formatResolvedDuration(totalResolvedDuration) : 'N/A' }}</span>
+                <span class="text-gray-600">|</span>
+                <span class="text-blue-200 font-medium">{{ totalResolvedDuration > 0 ? formatResolvedDuration(completedResolvedDuration) : 'N/A' }}</span>
+                <span class="text-gray-600">|</span>
+                <span class="text-blue-100 font-medium">{{ totalResolvedDuration > 0 ? formatResolvedDuration(remainingResolvedDuration) : 'N/A' }}</span>
               </div>
             </div>
           </div>
 
           <!-- Performance Info Card (Always Visible) -->
           <div
-            class="mb-6 border border-player-accent/30 rounded-lg p-6 relative overflow-hidden cover-image-container h-[408px]"
+            class="mb-6 border border-player-accent/30 rounded-lg p-6 relative overflow-hidden cover-image-container h-[326px]"
             :class="[
               !selectedPerformance && event?.coverImage ? 'bg-cover bg-center cover-image-glow' : 'bg-gradient-to-r from-gray-800 to-gray-700'
             ]"
@@ -206,92 +218,90 @@
             <div v-if="!selectedPerformance && event?.coverImage" class="diagonal-shine"></div>
             <!-- When a performance is selected -->
             <div v-if="selectedPerformance">
-              <div class="flex items-start justify-between mb-4">
+              <div class="flex items-start justify-between mb-3">
                 <div class="flex-1">
-                  <h3 class="text-xl font-bold text-white mb-2">{{ selectedPerformance.name }}</h3>
-                  <p class="text-lg text-gray-300 mb-3">by {{ selectedPerformance.performer }}</p>
-                  <div class="flex flex-wrap gap-4 text-sm">
-                    <div class="flex items-center gap-2">
+                  <h3 class="text-base font-bold text-white mb-1.5">{{ selectedPerformance.name }}</h3>
+                  <p class="text-sm text-gray-300 mb-2">by {{ selectedPerformance.performer }}</p>
+                  <div class="flex flex-wrap gap-2 text-sm">
+                    <div class="flex items-center gap-1.5">
                       <span class="text-gray-400">Type:</span>
-                      <span class="px-2 py-1 bg-blue-600/20 text-blue-300 rounded">{{ selectedPerformance.type }}</span>
+                      <span class="px-2 py-0.5 bg-blue-600/20 text-blue-300 rounded text-xs">{{ selectedPerformance.type }}</span>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-1.5">
                       <span class="text-gray-400">Mode:</span>
-                      <span class="px-2 py-1 bg-purple-600/20 text-purple-300 rounded">{{ selectedPerformance.mode }}</span>
+                      <span class="px-2 py-0.5 bg-purple-600/20 text-purple-300 rounded text-xs">{{ selectedPerformance.mode }}</span>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-1.5">
                       <span class="text-gray-400">Status:</span>
-                      <span :class="selectedPerformance.isDone ? 'px-2 py-1 bg-green-600/20 text-green-300 rounded' : 'px-2 py-1 bg-yellow-600/20 text-yellow-300 rounded'">
+                      <span :class="selectedPerformance.isDone ? 'px-2 py-0.5 bg-green-600/20 text-green-300 rounded text-xs' : 'px-2 py-0.5 bg-yellow-600/20 text-yellow-300 rounded text-xs'">
                         {{ selectedPerformance.isDone ? 'Completed' : 'Pending' }}
                       </span>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-1.5">
                       <span class="text-gray-400">Tracks:</span>
-                      <span class="px-2 py-1 bg-gray-600/50 text-gray-300 rounded">
+                      <span class="px-2 py-0.5 bg-gray-600/50 text-gray-300 rounded text-xs">
                         {{ selectedPerformance.tracks.length === 0 ? 'No tracks' : selectedPerformance.tracks.length }}
                       </span>
                     </div>
-                    <div v-if="selectedPerformance.expectedDuration" class="flex items-center gap-2">
+                    <div v-if="selectedPerformance.expectedDuration" class="flex items-center gap-1.5">
                       <span class="text-gray-400">Duration:</span>
-                      <span class="px-2 py-1 bg-blue-600/20 text-blue-300 rounded">
+                      <span class="px-2 py-0.5 bg-blue-600/20 text-blue-300 rounded text-xs">
                         {{ formatDuration(selectedPerformance.expectedDuration) }}
                       </span>
                     </div>
                   </div>
                 </div>
                 <div class="text-right">
-                  <p class="text-xs text-gray-400 mb-2">Created</p>
+                  <p class="text-xs text-gray-400 mb-1">Created</p>
                   <p class="text-sm text-gray-300">{{ formatDate(selectedPerformance.createdAt) }}</p>
                 </div>
               </div>
 
               <!-- Track Summary for Selected Performance (non-interactive, just counts) -->
               <div v-if="selectedPerformance.tracks.length > 0" class="border-t border-gray-600 pt-4 pb-8">
-                <h4 class="text-sm font-medium text-gray-400 mb-3">Track Summary</h4>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div class="text-center p-3 bg-gray-700/30 rounded">
-                    <p class="text-lg font-semibold text-white">{{ selectedPerformance.tracks.length }}</p>
-                    <p class="text-xs text-gray-400">Total Tracks</p>
+                <h4 class="text-[11px] font-medium text-gray-400 mb-2">Track Summary</h4>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div class="text-center p-2 bg-gray-700/30 rounded">
+                    <p class="text-base font-semibold text-white">{{ selectedPerformance.tracks.length }}</p>
+                    <p class="text-[11px] text-gray-400">Total Tracks</p>
                   </div>
-                  <div class="text-center p-3 bg-green-600/20 rounded">
-                    <p class="text-lg font-semibold text-green-300">{{ selectedPerformance.tracks.filter(t => t.isCompleted).length }}</p>
-                    <p class="text-xs text-gray-400">Completed</p>
+                  <div class="text-center p-2 bg-green-600/20 rounded">
+                    <p class="text-base font-semibold text-green-300">{{ selectedPerformance.tracks.filter(t => t.isCompleted).length }}</p>
+                    <p class="text-[11px] text-gray-400">Completed</p>
                   </div>
-                  <div class="text-center p-3 bg-yellow-600/20 rounded">
-                    <p class="text-lg font-semibold text-yellow-300">{{ selectedPerformance.tracks.filter(t => !t.isCompleted).length }}</p>
-                    <p class="text-xs text-gray-400">Remaining</p>
+                  <div class="text-center p-2 bg-yellow-600/20 rounded">
+                    <p class="text-base font-semibold text-yellow-300">{{ selectedPerformance.tracks.filter(t => !t.isCompleted).length }}</p>
+                    <p class="text-[11px] text-gray-400">Remaining</p>
                   </div>
-                  <div class="text-center p-3 bg-purple-600/20 rounded">
-                    <p class="text-lg font-semibold text-purple-300">{{ Math.round((selectedPerformance.tracks.filter(t => t.isCompleted).length / selectedPerformance.tracks.length) * 100) }}%</p>
-                    <p class="text-xs text-gray-400">Progress</p>
+                  <div class="text-center p-2 bg-purple-600/20 rounded">
+                    <p class="text-base font-semibold text-purple-300">{{ Math.round((selectedPerformance.tracks.filter(t => t.isCompleted).length / selectedPerformance.tracks.length) * 100) }}%</p>
+                    <p class="text-[11px] text-gray-400">Progress</p>
                   </div>
                 </div>
 
                 <!-- Currently Playing Track -->
-                <div v-if="playerStore.currentTrack && selectedPerformance.tracks.some(t => t.id === playerStore.currentTrack?.id)" class="mt-4 p-3 bg-player-accent/10 border border-player-accent/30 rounded">
-                  <div class="flex items-center gap-3">
+                <div v-if="playerStore.currentTrack && selectedPerformance.tracks.some(t => t.id === playerStore.currentTrack?.id)" class="mt-3 p-2 bg-player-accent/10 border border-player-accent/30 rounded">
+                  <div class="flex items-center gap-2">
                     <div class="flex-shrink-0">
-                      <div class="w-10 h-10 bg-player-accent/20 rounded-full flex items-center justify-center">
-                        <svg class="w-5 h-5 text-player-accent" :class="{ 'animate-pulse': playState.isPlaying }" fill="currentColor" viewBox="0 0 24 24">
+                      <div class="w-7 h-7 bg-player-accent/20 rounded-full flex items-center justify-center">
+                        <svg class="w-4 h-4 text-player-accent" :class="{ 'animate-pulse': playState.isPlaying }" fill="currentColor" viewBox="0 0 24 24">
                           <path v-if="playState.isPlaying" d="M8,5.14V19.14L19,12.14L8,5.14Z" />
                           <path v-else d="M8,5V19L11,19V5M13,5V19L16,19V5" />
                         </svg>
                       </div>
                     </div>
                     <div class="flex-1 min-w-0">
-                      <p class="text-xs text-gray-400 mb-1">Now Playing</p>
-                      <p class="text-sm font-medium text-white truncate">{{ playerStore.currentTrack.filename }}</p>
+                      <p class="text-[10px] font-medium text-white truncate">{{ playerStore.currentTrack.filename }}</p>
                     </div>
                     <div class="flex-shrink-0 text-right">
-                      <p class="text-sm text-player-accent font-mono">{{ formattedCurrentTime }}</p>
-                      <p class="text-xs text-gray-400 font-mono">{{ formattedDuration }}</p>
+                      <p class="text-[10px] text-player-accent font-mono">{{ formattedCurrentTime }} / {{ formattedDuration }}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
               <div v-else class="border-t border-gray-600 pt-4 pb-8 text-center">
-                <p class="text-gray-500 text-sm">No tracks available for this performance</p>
+                <p class="text-gray-500 text-xs">No tracks available for this performance</p>
               </div>
             </div>
 
@@ -340,64 +350,11 @@
               </div>
             </div>
 
-            <!-- Duration Overlay Banner (Always Visible) -->
-            <div class="absolute bottom-0 left-0 right-0 bg-black/50 backdrop-blur-sm border-t border-gray-600 rounded-b-lg px-6 py-3">
-              <!-- Expected Duration (Manually Entered) -->
-              <div v-if="totalDuration > 0" class="mb-2">
-                <div class="flex justify-between items-center">
-                  <div class="flex items-center gap-6 text-sm">
-                    <div class="flex items-center gap-2">
-                      <span class="text-gray-400">Total:</span>
-                      <span class="text-white font-medium">{{ formatDuration(totalDuration) }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-gray-400">Completed:</span>
-                      <span class="text-green-300 font-medium">{{ formatDuration(completedDuration) }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-gray-400">Remaining:</span>
-                      <span class="text-yellow-300 font-medium">{{ formatDuration(remainingDuration) }}</span>
-                    </div>
-                  </div>
-                  <div class="text-xs text-gray-500">
-                    {{ Math.round((completedDuration / totalDuration) * 100) }}% complete
-                  </div>
-                </div>
-              </div>
-
-              <!-- Resolved Duration (From Track Durations) -->
-              <div v-if="totalResolvedDuration > 0" class="border-t border-gray-700 pt-2">
-                <div class="flex justify-between items-center">
-                  <div class="flex items-center gap-6 text-xs">
-                    <div class="flex items-center gap-2">
-                      <span class="text-gray-500">Resolved Total:</span>
-                      <span class="text-blue-300 font-medium">{{ formatResolvedDuration(totalResolvedDuration) }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-gray-500">Resolved Completed:</span>
-                      <span class="text-blue-200 font-medium">{{ formatResolvedDuration(completedResolvedDuration) }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-gray-500">Resolved Remaining:</span>
-                      <span class="text-blue-100 font-medium">{{ formatResolvedDuration(remainingResolvedDuration) }}</span>
-                    </div>
-                  </div>
-                  <div class="text-xs text-gray-600">
-                    {{ Math.round((completedResolvedDuration / totalResolvedDuration) * 100) }}% done
-                  </div>
-                </div>
-              </div>
-
-              <div v-if="totalDuration === 0 && totalResolvedDuration === 0" class="text-center text-gray-500 text-sm">
-                No durations set - Add expected durations or upload tracks
-              </div>
-            </div>
           </div>
 
           <!-- Performances Section (Fixed Height) -->
           <div class="flex-1 flex flex-col min-h-0">
-            <div class="mb-4">
-              <h2 class="text-xl font-semibold text-white mb-3">Performances</h2>
+            <div class="mb-3">
               <!-- Search Box -->
               <div class="relative">
                 <input
@@ -448,7 +405,7 @@
               <div class="h-full overflow-y-auto pr-2 pb-6">
                 <!-- Active Performances Section -->
                 <div v-if="sortedItems.active.length > 0">
-                  <h3 class="text-lg font-semibold text-white mb-3 sticky top-0 bg-gray-900 py-2 z-10">
+                  <h3 class="text-sm font-semibold text-white mb-2 sticky top-0 bg-gray-900 py-2 z-10">
                     Performances
                   </h3>
                   <div ref="performanceContainer" class="space-y-3">
@@ -815,27 +772,24 @@ const remainingResolvedDuration = computed(() => {
 })
 
 function formatDuration(minutes: number): string {
-  if (minutes === 0) return '0 min'
+  if (minutes === 0) return '0m'
   const hours = Math.floor(minutes / 60)
   const mins = minutes % 60
   if (hours > 0) {
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
   }
-  return `${mins}m`
+  return `${Math.ceil(mins)}m`
 }
 
 function formatResolvedDuration(seconds: number): string {
-  if (seconds === 0) return '0 min'
+  if (seconds === 0) return '0m'
   const hours = Math.floor(seconds / 3600)
-  const mins = Math.floor((seconds % 3600) / 60)
-  const secs = seconds % 60
+  const mins = Math.ceil((seconds % 3600) / 60)
 
   if (hours > 0) {
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
-  } else if (mins > 0) {
-    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`
   }
-  return `${secs}s`
+  return `${mins}m`
 }
 
 // Artist cloud computation
@@ -901,7 +855,7 @@ const completionPercentage = computed(() => {
   return Math.round((completedPerformancesCount.value / totalPerformancesCount.value) * 100)
 })
 
-const circumference = computed(() => 2 * Math.PI * 24) // radius is 24
+const circumference = computed(() => 2 * Math.PI * 20) // radius is 20
 const progressOffset = computed(() => {
   const progress = completionPercentage.value / 100
   return circumference.value * (1 - progress)
@@ -1031,28 +985,9 @@ async function reorderPerformances(newOrder: string[]) {
 }
 
 async function onPerformanceCreated(performance: Performance) {
-  // Calculate the order for the new performance (after all existing active items)
-  const allItems = [...sortedItems.value.active, ...sortedItems.value.completed]
-  const maxOrder = Math.max(
-    ...allItems.map(item => item.order),
-    -1
-  )
-
-  // Update the performance order to be after all existing items
-  try {
-    const response = await fetch(`/api/events/${eventId}/performances/${performance.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order: maxOrder + 1 })
-    })
-
-    if (!response.ok) {
-      console.error('Failed to update performance order')
-    }
-  } catch (error) {
-    console.error('Error setting performance order:', error)
-  }
-
+  // Backend already assigns order: len(performances) which is correct
+  // Just reload to get the latest state
+  // No need to manually update order - avoid race condition
   await eventStore.loadEventPerformances(eventId)
 }
 
