@@ -108,7 +108,7 @@
       <p>Space: Play/Pause • Space x2: Stop & Reset</p>
       <div v-if="isRemoteEnabled" class="mt-1 flex flex-col items-center">
         <p class="text-purple-400 font-medium">🎵 Dual Streaming Active</p>
-        <p v-if="connectedRemoteUrl" class="text-[10px] text-gray-500 truncate max-w-[200px]">
+        <p v-if="connectedRemoteUrl" class="text-[10px] text-orange-300/70 truncate max-w-[200px]">
             To: {{ connectedRemoteUrl }}
         </p>
       </div>

@@ -936,6 +936,9 @@ function getTypeStyle(type: string): { backgroundColor: string; borderColor: str
     'Song': { bg: 'rgba(59, 130, 246, 0.15)', border: 'rgba(59, 130, 246, 0.4)', text: 'rgb(147, 197, 253)' },
     'Dance': { bg: 'rgba(236, 72, 153, 0.15)', border: 'rgba(236, 72, 153, 0.4)', text: 'rgb(249, 168, 212)' },
     'Recitation': { bg: 'rgba(168, 85, 247, 0.15)', border: 'rgba(168, 85, 247, 0.4)', text: 'rgb(216, 180, 254)' },
+    'Broadcast': { bg: 'rgba(99, 102, 241, 0.15)', border: 'rgba(99, 102, 241, 0.4)', text: 'rgb(165, 180, 252)' },
+    'Special Event': { bg: 'rgba(249, 115, 22, 0.15)', border: 'rgba(249, 115, 22, 0.4)', text: 'rgb(253, 186, 116)' },
+    'Fashion Show': { bg: 'rgba(236, 72, 153, 0.15)', border: 'rgba(236, 72, 153, 0.4)', text: 'rgb(249, 168, 212)' },
     'Break': { bg: 'rgba(251, 191, 36, 0.15)', border: 'rgba(251, 191, 36, 0.4)', text: 'rgb(253, 224, 71)' }
   }
 

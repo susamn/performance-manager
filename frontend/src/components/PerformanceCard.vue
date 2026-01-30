@@ -25,25 +25,36 @@
           <div class="flex-1 min-w-0">
             <h4 class="text-sm font-semibold text-white truncate">{{ performance.name }}</h4>
             <p class="text-sm text-gray-300 truncate">by {{ performance.performer }}</p>
-            <div class="flex items-center gap-2 mt-1 flex-wrap">
-              <span
-                class="px-2 py-0.5 rounded-full text-xs font-medium border"
-                :style="getTypeStyle(performance.type)"
-              >
-                {{ performance.type }}
-              </span>
-              <span
-                class="px-2 py-0.5 rounded-full text-xs font-medium border"
-                :style="getModeStyle(performance.mode)"
-              >
-                {{ performance.mode }}
-              </span>
-              <span class="text-xs text-gray-400">
-                {{ performance.tracks.length === 0 ? 'No tracks' : `${performance.tracks.length} track${performance.tracks.length !== 1 ? 's' : ''}` }}
-              </span>
-              <span class="text-xs text-gray-400">
-                {{ formatDate(performance.createdAt) }}
-              </span>
+            <div class="mt-1">
+              <div class="flex items-center gap-2 flex-wrap mb-1">
+                <span
+                  class="px-2 py-0.5 rounded-full text-xs font-medium border"
+                  :style="getTypeStyle(performance.type)"
+                >
+                  {{ performance.type }}
+                </span>
+                <span
+                  class="px-2 py-0.5 rounded-full text-xs font-medium border"
+                  :style="getModeStyle(performance.mode)"
+                >
+                  {{ performance.mode }}
+                </span>
+              </div>
+              <div class="flex items-center gap-2 text-xs text-gray-400 mb-1">
+                <span>
+                  {{ performance.tracks.length === 0 ? 'No tracks' : `${performance.tracks.length} track${performance.tracks.length !== 1 ? 's' : ''}` }}
+                </span>
+                <span>•</span>
+                <span>
+                  {{ formatDate(performance.createdAt) }}
+                </span>
+              </div>
+              <div v-if="performance.expectedDuration" class="flex items-center gap-1.5 text-xs font-medium text-player-accent">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z" />
+                </svg>
+                <span>{{ formatDuration(performance.expectedDuration) }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -201,12 +212,25 @@ function formatDate(dateString: string): string {
   return date.toLocaleDateString()
 }
 
+function formatDuration(minutes?: number): string {
+  if (!minutes) return ''
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  if (hours > 0) {
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
+  }
+  return `${Math.ceil(mins)}m`
+}
+
 // Color schemes for performance types
 function getTypeStyle(type: string): { backgroundColor: string; borderColor: string; color: string } {
   const styles: Record<string, { bg: string; border: string; text: string }> = {
     'Song': { bg: 'rgba(59, 130, 246, 0.15)', border: 'rgba(59, 130, 246, 0.4)', text: 'rgb(147, 197, 253)' },
     'Dance': { bg: 'rgba(236, 72, 153, 0.15)', border: 'rgba(236, 72, 153, 0.4)', text: 'rgb(249, 168, 212)' },
     'Recitation': { bg: 'rgba(168, 85, 247, 0.15)', border: 'rgba(168, 85, 247, 0.4)', text: 'rgb(216, 180, 254)' },
+    'Broadcast': { bg: 'rgba(99, 102, 241, 0.15)', border: 'rgba(99, 102, 241, 0.4)', text: 'rgb(165, 180, 252)' },
+    'Special Event': { bg: 'rgba(249, 115, 22, 0.15)', border: 'rgba(249, 115, 22, 0.4)', text: 'rgb(253, 186, 116)' },
+    'Fashion Show': { bg: 'rgba(236, 72, 153, 0.15)', border: 'rgba(236, 72, 153, 0.4)', text: 'rgb(249, 168, 212)' },
     'Break': { bg: 'rgba(251, 191, 36, 0.15)', border: 'rgba(251, 191, 36, 0.4)', text: 'rgb(253, 224, 71)' }
   }
 

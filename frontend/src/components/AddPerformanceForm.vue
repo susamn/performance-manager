@@ -31,7 +31,7 @@
         />
       </div>
 
-      <div class="grid gap-3" :class="isBreakType ? 'grid-cols-2' : 'grid-cols-3'">
+      <div class="grid grid-cols-2 gap-3">
         <div>
           <label for="performanceType" class="block text-xs font-medium text-gray-300 mb-1.5">
             Type *
@@ -46,6 +46,9 @@
             <option value="Song">Song</option>
             <option value="Dance">Dance</option>
             <option value="Recitation">Recitation</option>
+            <option value="Broadcast">Broadcast</option>
+            <option value="Special Event">Special Event</option>
+            <option value="Fashion Show">Fashion Show</option>
             <option value="Break">Break</option>
           </select>
         </div>
@@ -84,20 +87,20 @@
             <option value="Group">Group</option>
           </select>
         </div>
+      </div>
 
-        <div>
-          <label for="expectedDuration" class="block text-xs font-medium text-gray-300 mb-1.5">
-            Duration (min)
-          </label>
-          <input
-            id="expectedDuration"
-            v-model.number="expectedDuration"
-            type="number"
-            min="1"
-            placeholder="min"
-            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white text-sm h-[38px]"
-          />
-        </div>
+      <div>
+        <label for="expectedDuration" class="block text-xs font-medium text-gray-300 mb-1.5">
+          Duration (min)
+        </label>
+        <input
+          id="expectedDuration"
+          v-model.number="expectedDuration"
+          type="number"
+          min="1"
+          placeholder="Enter expected duration in minutes"
+          class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white text-sm h-[38px]"
+        />
       </div>
 
       <div v-if="!isBreakType">
@@ -161,7 +164,7 @@ const eventStore = useEventStore()
 
 const performanceName = ref('')
 const performerName = ref('')
-const performanceType = ref<'Song' | 'Dance' | 'Recitation' | 'Break'>('Song')
+const performanceType = ref<'Song' | 'Dance' | 'Recitation' | 'Broadcast' | 'Special Event' | 'Fashion Show' | 'Break'>('Song')
 const performanceMode = ref<'Solo' | 'Duet' | 'Group'>('Solo')
 const breakSubType = ref<'Lunch' | 'Dinner' | 'Broadcast' | 'Announcement' | 'Appearence' | 'Special Show'>('Lunch')
 const expectedDuration = ref<number | undefined>(undefined)
