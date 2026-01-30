@@ -1,9 +1,11 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Howl } from 'howler'
 import type { PlayState, Track } from '@/types'
+import { useEventStore } from './event'
 
 export const usePlayerStore = defineStore('player', () => {
+  const eventStore = useEventStore()
   const playState = ref<PlayState>({
     isPlaying: false,
     currentTime: 0,
@@ -14,7 +16,18 @@ export const usePlayerStore = defineStore('player', () => {
   const howlInstance = ref<Howl | null>(null)
   const isLoading = ref(false)
   const loadProgress = ref(0)
-
+  const isRemoteEnabled = ref(false)
+  
+  // Watch for selected event changes to auto-configure remote player
+  watch(() => eventStore.selectedEvent, (event) => {
+    if (event && event.remotePlayerUrl) {
+        // Auto-enable if the event has a configured remote player
+        isRemoteEnabled.value = true
+    } else {
+        isRemoteEnabled.value = false
+    }
+  })
+  
   const formattedCurrentTime = computed(() => formatTime(playState.value.currentTime))
   const formattedDuration = computed(() => formatTime(playState.value.duration))
   const progress = computed(() =>
@@ -32,6 +45,29 @@ export const usePlayerStore = defineStore('player', () => {
     if (howlInstance.value) {
       howlInstance.value.unload()
       howlInstance.value = null
+    }
+  }
+
+  function toggleRemote() {
+    isRemoteEnabled.value = !isRemoteEnabled.value
+  }
+
+  // Helper to send commands to remote player
+  async function sendRemoteCommand(endpoint: string, data: any = {}) {
+    if (!isRemoteEnabled.value) return
+    
+    // Get URL from current event or fallback
+    const remoteUrl = eventStore.selectedEvent?.remotePlayerUrl
+    if (!remoteUrl) return
+
+    try {
+      await fetch(`${remoteUrl}/${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+    } catch (error) {
+      console.error(`Failed to send remote command ${endpoint}:`, error)
     }
   }
 
@@ -78,23 +114,55 @@ export const usePlayerStore = defineStore('player', () => {
       onplay: () => {
         playState.value.isPlaying = true
         startTimeUpdates()
+        
+        // Trigger remote play
+        if (isRemoteEnabled.value && track.url) {
+            // Need absolute URL for remote player
+            // Assuming the browser URL and backend are accessible to remote player via same hostname/IP if localhost
+            // But for docker to docker, we might need internal network alias.
+            // For now, let's construct a full URL assuming the remote player can access the backend via 'performance-manager:5000' 
+            // OR if running locally, 'localhost:5000'.
+            // Simple approach: Send the full URL constructed from window.location
+            const fullUrl = new URL(track.url, window.location.origin).href
+            let remoteUrl = fullUrl
+
+            // Get the configured remote player URL
+            const configuredRemote = eventStore.selectedEvent?.remotePlayerUrl || ''
+            
+            // If the remote player is on localhost/127.0.0.1, it means it's likely 
+            // in the same Docker stack or same machine. In this case, we use the 
+            // Docker internal network name 'performance-manager' for the audio stream.
+            if (configuredRemote.includes('localhost') || configuredRemote.includes('127.0.0.1')) {
+                if (fullUrl.includes('localhost:5000')) {
+                    remoteUrl = fullUrl.replace('localhost:5000', 'performance-manager:5000')
+                } else if (fullUrl.includes('127.0.0.1:5000')) {
+                    remoteUrl = fullUrl.replace('127.0.0.1:5000', 'performance-manager:5000')
+                }
+            }
+            
+            sendRemoteCommand('play', { url: remoteUrl })
+        }
       },
 
       onpause: () => {
         playState.value.isPlaying = false
         stopTimeUpdates()
+        sendRemoteCommand('pause')
       },
 
       onstop: () => {
         playState.value.isPlaying = false
         playState.value.currentTime = 0
         stopTimeUpdates()
+        sendRemoteCommand('stop')
       },
 
       onend: () => {
         playState.value.isPlaying = false
         playState.value.currentTime = 0
         stopTimeUpdates()
+        // Remote player handles its own end, but we can ensure stop
+        // sendRemoteCommand('stop') 
       },
 
       onseek: () => {
@@ -192,6 +260,7 @@ export const usePlayerStore = defineStore('player', () => {
     howlInstance,
     isLoading,
     loadProgress,
+    isRemoteEnabled,
     formattedCurrentTime,
     formattedDuration,
     formattedLoadProgress,
@@ -204,6 +273,7 @@ export const usePlayerStore = defineStore('player', () => {
     seek,
     rewind,
     handleSpaceKey,
-    cleanupHowl
+    cleanupHowl,
+    toggleRemote
   }
 })

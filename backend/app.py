@@ -19,7 +19,8 @@ from werkzeug.utils import secure_filename
 from mutagen import File as MutagenFile
 
 app = Flask(__name__)
-CORS(app)
+# Enable CORS for all routes and origins
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Configuration
 if os.environ.get('PERFORMANCE_MANAGER_DATA_DIR'):
@@ -79,7 +80,7 @@ class EventManager:
         """Get performances file path for an event"""
         return self.get_event_dir(event_id) / 'performances.json'
 
-    def create_event(self, name: str, description: str = '', unlock_code: str = '12345') -> Dict[str, Any]:
+    def create_event(self, name: str, description: str = '', unlock_code: str = '12345', remote_player_url: str = '') -> Dict[str, Any]:
         """Create a new event"""
         event_id = str(uuid.uuid4())
         event_dir = self.get_event_dir(event_id)
@@ -98,7 +99,8 @@ class EventManager:
             'performances': [],
             'breaks': [],
             'coverImage': None,
-            'imagePosition': {'x': 50, 'y': 50}  # Default center position as percentages
+            'imagePosition': {'x': 50, 'y': 50},  # Default center position as percentages
+            'remotePlayerUrl': remote_player_url
         }
 
         self.events.append(event)
@@ -453,12 +455,13 @@ def create_event():
         name = request.form.get('name')
         description = request.form.get('description', '')
         unlock_code = request.form.get('unlockCode', '12345')
+        remote_player_url = request.form.get('remotePlayerUrl', '')
 
         if not name:
             return jsonify({'error': 'Name is required'}), 400
 
         # Create event
-        event = em.create_event(name, description, unlock_code)
+        event = em.create_event(name, description, unlock_code, remote_player_url)
         if not event:
             return jsonify({'error': 'Failed to create event'}), 500
 
@@ -478,7 +481,12 @@ def create_event():
         if not data or 'name' not in data:
             return jsonify({'error': 'Name is required'}), 400
 
-        event = em.create_event(data['name'], data.get('description', ''), data.get('unlockCode', '12345'))
+        event = em.create_event(
+            data['name'], 
+            data.get('description', ''), 
+            data.get('unlockCode', '12345'),
+            data.get('remotePlayerUrl', '')
+        )
         return jsonify(event), 201
 
 @app.route('/api/events/<event_id>', methods=['GET'])

@@ -1,6 +1,19 @@
 <template>
   <div class="media-player">
-    <h3 class="text-lg font-semibold mb-4 text-player-accent">Media Player</h3>
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-player-accent">Media Player</h3>
+        
+        <!-- Remote Player Toggle -->
+        <button 
+            @click="toggleRemote"
+            class="p-1.5 rounded-full transition-colors flex items-center gap-1 text-xs font-medium border"
+            :class="isRemoteEnabled ? 'bg-purple-600/20 border-purple-500 text-purple-300' : 'bg-gray-700 border-gray-600 text-gray-400 hover:text-white'"
+            title="Toggle Remote Player (Docker Node)"
+        >
+            <span class="w-2 h-2 rounded-full" :class="isRemoteEnabled ? 'bg-purple-500 animate-pulse' : 'bg-gray-500'"></span>
+            Remote
+        </button>
+    </div>
 
     <!-- Music Visualizer Panel -->
     <div class="visualizer-panel mb-4 bg-gray-800 rounded-lg p-4 border border-gray-600 relative">
@@ -30,6 +43,7 @@
       </div>
       <div v-else class="mt-1">
         <span class="text-xs text-green-400">✓ Ready to stream</span>
+        <span v-if="isRemoteEnabled" class="ml-2 text-xs text-purple-400">• Remote Active</span>
       </div>
     </div>
 
@@ -92,7 +106,13 @@
     <!-- Instructions -->
     <div class="mt-4 text-xs text-gray-500 text-center">
       <p>Space: Play/Pause • Space x2: Stop & Reset</p>
-      <p class="mt-1 text-green-400">🎵 Streaming enabled</p>
+      <div v-if="isRemoteEnabled" class="mt-1 flex flex-col items-center">
+        <p class="text-purple-400 font-medium">🎵 Dual Streaming Active</p>
+        <p v-if="connectedRemoteUrl" class="text-[10px] text-gray-500 truncate max-w-[200px]">
+            To: {{ connectedRemoteUrl }}
+        </p>
+      </div>
+      <p v-else class="mt-1 text-green-400">🎵 Local Streaming Only</p>
     </div>
   </div>
 </template>
@@ -100,8 +120,10 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { usePlayerStore } from '@/stores/player'
+import { useEventStore } from '@/stores/event'
 
 const playerStore = usePlayerStore()
+const eventStore = useEventStore()
 const visualizerCanvas = ref<HTMLCanvasElement>()
 
 // Simple visualizer variables
@@ -118,6 +140,12 @@ const formattedCurrentTime = computed(() => playerStore.formattedCurrentTime)
 const formattedDuration = computed(() => playerStore.formattedDuration)
 const formattedLoadProgress = computed(() => playerStore.formattedLoadProgress)
 const howlInstance = computed(() => playerStore.howlInstance)
+const isRemoteEnabled = computed(() => playerStore.isRemoteEnabled)
+const connectedRemoteUrl = computed(() => eventStore.selectedEvent?.remotePlayerUrl)
+
+function toggleRemote() {
+    playerStore.toggleRemote()
+}
 
 function togglePlayPause() {
   playerStore.togglePlayPause()

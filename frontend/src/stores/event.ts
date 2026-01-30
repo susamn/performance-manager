@@ -38,12 +38,18 @@ export const useEventStore = defineStore('event', () => {
     }
   }
 
-  async function createEvent(name: string, description: string = '') {
+  async function createEvent(name: string, description: string = '', remotePlayerUrl: string = '') {
     try {
+      // Use FormData if sending files, but for now assuming JSON since AddEventForm handles FormData logic mostly?
+      // Wait, AddEventForm sends FormData.
+      // Store function uses JSON. If AddEventForm uses store, it needs to handle the multipart.
+      // But AddEventForm logic is usually simpler. Let's look at AddEventForm later.
+      // For now, update the store JSON method signature.
+      
       const response = await fetch('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description }),
+        body: JSON.stringify({ name, description, remotePlayerUrl }),
       })
       if (!response.ok) throw new Error('Failed to create event')
       const event = await response.json()

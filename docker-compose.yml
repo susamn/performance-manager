@@ -11,6 +11,28 @@ services:
       - performance_data:/data
     environment:
       - PERFORMANCE_MANAGER_DATA_DIR=/data
+      # Allow frontend to know about remote player (though frontend talks directly to it usually)
+      - VITE_REMOTE_PLAYER_URL=http://localhost:5001
+    restart: unless-stopped
+    depends_on:
+      - remote-player
+
+  remote-player:
+    build: ../remote-player
+    image: performance-manager-remote-player:latest
+    container_name: remote-player
+    ports:
+      - "5001:5001"
+    devices:
+      - /dev/snd:/dev/snd  # Direct access to sound card (ALSA)
+    volumes:
+      - /run/user/1000/pulse:/run/user/1000/pulse  # PulseAudio socket
+      - ~/.config/pulse/cookie:/home/vlcuser/.config/pulse/cookie # Pulse cookie
+    environment:
+      - PULSE_SERVER=unix:/run/user/1000/pulse/native
+      - PULSE_COOKIE=/home/vlcuser/.config/pulse/cookie
+    group_add:
+      - audio
     restart: unless-stopped
 
 volumes:
