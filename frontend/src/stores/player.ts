@@ -162,7 +162,7 @@ export const usePlayerStore = defineStore('player', () => {
         playState.value.currentTime = 0
         stopTimeUpdates()
         // Remote player handles its own end, but we can ensure stop
-        // sendRemoteCommand('stop') 
+        sendRemoteCommand('stop') 
       },
 
       onseek: () => {
