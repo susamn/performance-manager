@@ -493,6 +493,7 @@
 
         <!-- Right Media Player -->
         <div class="lg:col-span-1 space-y-6">
+          <FillersWidget />
           <MediaPlayer />
 
           <!-- Performance Type Distribution -->
@@ -599,6 +600,7 @@ import AddPerformanceForm from '@/components/AddPerformanceForm.vue'
 import PerformanceCard from '@/components/PerformanceCard.vue'
 import BreakCard from '@/components/BreakCard.vue'
 import MediaPlayer from '@/components/MediaPlayer.vue'
+import FillersWidget from '@/components/FillersWidget.vue'
 import EditPerformanceModal from '@/components/EditPerformanceModal.vue'
 import EditEventModal from '@/components/EditEventModal.vue'
 import Sortable from 'sortablejs'
