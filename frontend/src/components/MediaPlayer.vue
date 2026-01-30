@@ -221,10 +221,17 @@ function drawVisualizer() {
 
     const barCount = 32
     const barWidth = width / barCount
+    
+    // Main Green Gradient
     const gradient = canvasContext.createLinearGradient(0, height, 0, 0)
     gradient.addColorStop(0, '#10b981') // player-accent (green)
     gradient.addColorStop(0.5, '#34d399') // lighter green
     gradient.addColorStop(1, '#6ee7b7') // lightest green
+
+    // Purple Gradient for Dual Streaming
+    const purpleGradient = canvasContext.createLinearGradient(0, height, 0, 0)
+    purpleGradient.addColorStop(0, '#7c3aed') // purple-600
+    purpleGradient.addColorStop(1, '#a78bfa') // purple-400
 
     for (let i = 0; i < barCount; i++) {
       // Create smooth animated wave pattern
@@ -233,8 +240,10 @@ function drawVisualizer() {
       const wave1 = Math.sin(frequency1) * 0.4
       const wave2 = Math.sin(frequency2) * 0.3
       const combined = wave1 + wave2
+      
       const barHeight = (combined * 0.5 + 0.5) * height * 0.7 + height * 0.1
 
+      // Draw Main Green Spectrum
       canvasContext.fillStyle = gradient
       canvasContext.fillRect(
         i * barWidth,
@@ -242,6 +251,23 @@ function drawVisualizer() {
         barWidth - 1,
         barHeight
       )
+
+      // Draw Purple Spectrum (Low Magnitude) if Dual Streaming is Active
+      if (isRemoteEnabled.value) {
+        // Use slightly different wave calculation for "same form" but maybe slightly offset or just scaled
+        // Request says "same form", so we use same combined wave but scale height
+        const purpleHeight = barHeight * 0.6 // Low magnitude
+        
+        canvasContext.fillStyle = purpleGradient
+        // Draw slightly offset x or same x? "same form spectrum visual" implies same structure.
+        // Let's draw it at same x, z-index behind implies drawing first.
+        canvasContext.fillRect(
+            i * barWidth,
+            height - purpleHeight,
+            barWidth - 1,
+            purpleHeight
+        )
+      }
     }
 
     // Continue animation only when playing

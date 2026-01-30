@@ -39,8 +39,22 @@
         </div>
 
         <div>
+          <label for="currentUnlockCode" class="block text-sm font-medium text-gray-300 mb-2">
+            Current Unlock Code *
+          </label>
+          <input
+            id="currentUnlockCode"
+            v-model="currentUnlockCode"
+            type="password"
+            required
+            placeholder="Enter current unlock code to verify"
+            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white"
+          />
+        </div>
+
+        <div>
           <label for="unlockCode" class="block text-sm font-medium text-gray-300 mb-2">
-            Unlock Code (Leave blank to keep current)
+            New Unlock Code (Optional)
           </label>
           <input
             id="unlockCode"
@@ -100,7 +114,7 @@
           </button>
           <button
             type="submit"
-            :disabled="isSaving || !eventName.trim() || (useRemotePlayer && connectionStatus !== null && !connectionStatus.success && remotePlayerUrl !== initialRemoteUrl)"
+            :disabled="isSaving || !eventName.trim() || !currentUnlockCode.trim() || (useRemotePlayer && connectionStatus !== null && !connectionStatus.success && remotePlayerUrl !== initialRemoteUrl)"
             class="px-4 py-2 bg-player-accent hover:bg-green-400 text-black font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {{ isSaving ? 'Saving...' : 'Save Changes' }}
@@ -131,6 +145,7 @@ const eventStore = useEventStore()
 const eventName = ref('')
 const eventDescription = ref('')
 const unlockCode = ref('')
+const currentUnlockCode = ref('')
 const useRemotePlayer = ref(false)
 const remotePlayerUrl = ref('')
 const initialRemoteUrl = ref('')
@@ -145,6 +160,7 @@ watch(() => props.event, (newEvent) => {
     eventName.value = newEvent.name
     eventDescription.value = newEvent.description || ''
     unlockCode.value = '' // Don't show existing unlock code
+    currentUnlockCode.value = '' // Reset current code
     
     if (newEvent.remotePlayerUrl) {
         useRemotePlayer.value = true
@@ -188,12 +204,7 @@ async function testConnection() {
 }
 
 async function handleSubmit() {
-  if (!eventName.value.trim()) return
-
-  // If remote player is enabled and URL changed, verify connection (unless explicitly ignored by user pressing save again? No, let's just warn)
-  // Logic: if useRemotePlayer is true, and URL is different from initial, require successful test? 
-  // Or just let them save if they really want to.
-  // The 'disabled' button logic handles some of this, but let's be flexible.
+  if (!eventName.value.trim() || !currentUnlockCode.value.trim()) return
 
   isSaving.value = true
 
@@ -208,12 +219,12 @@ async function handleSubmit() {
       updates.unlockCode = unlockCode.value.trim()
     }
 
-    const updatedEvent = await eventStore.updateEvent(props.event.id, updates)
+    const updatedEvent = await eventStore.updateEvent(props.event.id, updates, currentUnlockCode.value.trim())
     emit('updated', updatedEvent)
     closeModal()
   } catch (error) {
     console.error('Error updating event:', error)
-    alert('Failed to update event. Please try again.')
+    alert('Failed to update event. Please check your unlock code.')
   } finally {
     isSaving.value = false
   }

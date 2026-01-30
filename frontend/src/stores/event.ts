@@ -61,12 +61,12 @@ export const useEventStore = defineStore('event', () => {
     }
   }
 
-  async function updateEvent(eventId: string, updates: Partial<Event> & { unlockCode?: string }) {
+  async function updateEvent(eventId: string, updates: Partial<Event> & { unlockCode?: string }, currentUnlockCode: string) {
     try {
       const response = await fetch(`/api/events/${eventId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
+        body: JSON.stringify({ ...updates, currentUnlockCode }),
       })
       if (!response.ok) throw new Error('Failed to update event')
       const updatedEvent = await response.json()

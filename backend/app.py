@@ -520,6 +520,22 @@ def update_event_details(event_id: str):
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
+    # Verify current unlock code
+    current_code = data.get('currentUnlockCode')
+    if not current_code:
+        return jsonify({'error': 'Current unlock code is required to update event details'}), 401
+
+    # Read stored unlock code
+    unlock_code_file = em.get_event_dir(event_id) / 'unlock_code'
+    if unlock_code_file.exists():
+        with open(unlock_code_file, 'r') as f:
+            stored_code = f.read().strip()
+    else:
+        stored_code = '12345' # Default
+
+    if current_code != stored_code:
+        return jsonify({'error': 'Incorrect unlock code'}), 401
+
     updates = {}
     if 'name' in data:
         updates['name'] = data['name']
