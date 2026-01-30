@@ -167,7 +167,9 @@ export const usePlayerStore = defineStore('player', () => {
 
       onseek: () => {
         if (howlInstance.value) {
-          playState.value.currentTime = howlInstance.value.seek() as number
+          const time = howlInstance.value.seek() as number
+          playState.value.currentTime = time
+          sendRemoteCommand('seek', { time: time })
         }
       }
     })
