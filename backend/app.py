@@ -4,17 +4,18 @@ import os
 import json
 import uuid
 import shutil
+import fcntl
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 import logging
+from contextlib import contextmanager
 
 logging.basicConfig(level=logging.INFO)
 
 from flask import Flask, request, jsonify, send_file, Response
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
-import magic
 from mutagen import File as MutagenFile
 
 app = Flask(__name__)
@@ -31,6 +32,21 @@ ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
 
 # Ensure config directory exists
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+@contextmanager
+def file_lock(file_path: Path):
+    """Context manager for file locking to prevent concurrent writes"""
+    lock_file = file_path.parent / f".{file_path.name}.lock"
+    lock_file.touch(exist_ok=True)
+
+    with open(lock_file, 'w') as lock:
+        try:
+            # Acquire exclusive lock
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            yield
+        finally:
+            # Release lock
+            fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
 
 class EventManager:
     def __init__(self):
@@ -50,9 +66,10 @@ class EventManager:
             self.events = []
 
     def save_events(self):
-        """Save events to JSON file"""
-        with open(self.events_file, 'w') as f:
-            json.dump(self.events, f, indent=2)
+        """Save events to JSON file with file locking"""
+        with file_lock(self.events_file):
+            with open(self.events_file, 'w') as f:
+                json.dump(self.events, f, indent=2)
 
     def get_event_dir(self, event_id: str) -> Path:
         """Get directory path for an event"""
@@ -126,10 +143,11 @@ class EventManager:
         return []
 
     def save_event_performances(self, event_id: str, performances: List[Dict[str, Any]]):
-        """Save performances for a specific event"""
+        """Save performances for a specific event with file locking"""
         performances_file = self.get_event_performances_file(event_id)
-        with open(performances_file, 'w') as f:
-            json.dump(performances, f, indent=2)
+        with file_lock(performances_file):
+            with open(performances_file, 'w') as f:
+                json.dump(performances, f, indent=2)
 
     def get_performance_dir(self, event_id: str, performance_id: str) -> Path:
         """Get directory path for a performance within an event"""
@@ -227,21 +245,28 @@ class EventManager:
         return None
 
     def reorder_performances(self, event_id: str, order: List[str]) -> bool:
-        """Reorder performances within an event"""
+        """Reorder performances within an event
+
+        IMPORTANT: This only updates the order field for performances in the order list.
+        All other performances are preserved with their existing order values.
+        """
         try:
             performances = self.load_event_performances(event_id)
             performance_map = {p['id']: p for p in performances}
-            reordered = []
 
+            # Update order ONLY for performances that are in the reorder list
             for i, perf_id in enumerate(order):
                 if perf_id in performance_map:
-                    performance = performance_map[perf_id]
-                    performance['order'] = i
-                    reordered.append(performance)
+                    performance_map[perf_id]['order'] = i
 
-            self.save_event_performances(event_id, reordered)
+            # Keep ALL performances, not just the ones being reordered
+            # Performances not in the order list keep their existing order
+            all_performances = list(performance_map.values())
+
+            self.save_event_performances(event_id, all_performances)
             return True
-        except Exception:
+        except Exception as e:
+            logging.error(f"Error reordering performances: {e}")
             return False
 
     def update_track_completion(self, event_id: str, performance_id: str, track_id: str, is_completed: bool) -> Optional[Dict[str, Any]]:
@@ -273,10 +298,11 @@ class EventManager:
         return []
 
     def save_event_breaks(self, event_id: str, breaks: List[Dict[str, Any]]) -> None:
-        """Save breaks for an event"""
+        """Save breaks for an event with file locking"""
         breaks_file = self.get_event_breaks_file(event_id)
-        with open(breaks_file, 'w') as f:
-            json.dump(breaks, f, indent=2)
+        with file_lock(breaks_file):
+            with open(breaks_file, 'w') as f:
+                json.dump(breaks, f, indent=2)
 
     def create_break(self, event_id: str, name: str, break_type: str, expected_duration: Optional[int] = None) -> Optional[Dict[str, Any]]:
         """Create a new break within an event"""
@@ -457,10 +483,22 @@ def create_event():
 
 @app.route('/api/events/<event_id>', methods=['GET'])
 def get_event(event_id: str):
-    """Get a specific event"""
+    """Get a specific event with performance count"""
     event = em.get_event(event_id)
     if event:
-        return jsonify(event)
+        event_with_count = event.copy()
+        # Get performance count for consistency with list endpoint
+        try:
+            performances_file = em.get_event_performances_file(event['id'])
+            if performances_file.exists():
+                with open(performances_file, 'r') as f:
+                    event_performances = json.load(f)
+                event_with_count['performanceCount'] = len(event_performances)
+            else:
+                event_with_count['performanceCount'] = 0
+        except Exception:
+            event_with_count['performanceCount'] = 0
+        return jsonify(event_with_count)
     return jsonify({'error': 'Event not found'}), 404
 
 @app.route('/api/events/<event_id>', methods=['DELETE'])
@@ -909,18 +947,17 @@ def reorder_event_breaks(event_id: str):
     # Create a mapping of id to break
     break_map = {b['id']: b for b in breaks}
 
-    # Reorder breaks according to new_order and update order field
-    reordered_breaks = []
+    # Update order ONLY for breaks that are in the reorder list
+    # All other breaks are preserved with their existing order values
     for index, break_id in enumerate(new_order):
         if break_id in break_map:
-            break_obj = break_map[break_id].copy()
-            break_obj['order'] = index
-            reordered_breaks.append(break_obj)
+            break_map[break_id]['order'] = index
 
+    # Keep ALL breaks, not just the ones being reordered
+    all_breaks = list(break_map.values())
 
-
-    em.save_event_breaks(event_id, reordered_breaks)
-    app.logger.info(f"Saved new break order: {reordered_breaks}")
+    em.save_event_breaks(event_id, all_breaks)
+    app.logger.info(f"Saved new break order with {len(all_breaks)} total breaks")
     return jsonify({'message': 'Breaks reordered successfully'})
 
 # Event cover image endpoints

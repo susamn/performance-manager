@@ -3,3 +3,6 @@ Flask-CORS==4.0.0
 Werkzeug==3.0.1
 python-magic==0.4.27
 mutagen==1.47.0
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-mock==3.12.0
