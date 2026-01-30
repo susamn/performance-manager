@@ -37,6 +37,7 @@
               :event="event"
               :performance-count="getEventPerformanceCount(event)"
               @select="selectEvent"
+              @edit="openEditModal"
               @delete="deleteEvent"
               @download="downloadEventPDF"
             />
@@ -44,15 +45,25 @@
         </div>
       </div>
     </div>
+
+    <!-- Edit Event Modal -->
+    <EditEventModal
+      v-if="eventToEdit"
+      :is-visible="editModalVisible"
+      :event="eventToEdit"
+      @close="closeEditModal"
+      @updated="onEventUpdated"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useEventStore } from '@/stores/event'
 import AddEventForm from '@/components/AddEventForm.vue'
 import EventCard from '@/components/EventCard.vue'
+import EditEventModal from '@/components/EditEventModal.vue'
 import type { Event, Performance, Break } from '@/types'
 
 const router = useRouter()
@@ -60,6 +71,28 @@ const eventStore = useEventStore()
 
 const isLoading = computed(() => eventStore.isLoading)
 const sortedEvents = computed(() => eventStore.sortedEvents)
+
+// Edit modal state
+const editModalVisible = ref(false)
+const eventToEdit = ref<Event | null>(null)
+
+function openEditModal(event: Event) {
+  eventToEdit.value = event
+  editModalVisible.value = true
+}
+
+function closeEditModal() {
+  editModalVisible.value = false
+  eventToEdit.value = null
+}
+
+async function onEventUpdated(updatedEvent: Event) {
+  // Store handles the update in the list, just close the modal
+  // But strictly speaking, we might want to reload if we want to be super sure,
+  // or trust the store's local update.
+  // The store's updateEvent action updates the local list, so we should be good.
+  closeEditModal()
+}
 
 onMounted(() => {
   eventStore.loadEvents()

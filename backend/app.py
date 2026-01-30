@@ -509,6 +509,38 @@ def get_event(event_id: str):
         return jsonify(event_with_count)
     return jsonify({'error': 'Event not found'}), 404
 
+@app.route('/api/events/<event_id>', methods=['PUT'])
+def update_event_details(event_id: str):
+    """Update an event's details"""
+    event = em.get_event(event_id)
+    if not event:
+        return jsonify({'error': 'Event not found'}), 404
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    updates = {}
+    if 'name' in data:
+        updates['name'] = data['name']
+    if 'description' in data:
+        updates['description'] = data['description']
+    if 'remotePlayerUrl' in data:
+        updates['remotePlayerUrl'] = data['remotePlayerUrl']
+    
+    # Handle unlock code update
+    if 'unlockCode' in data:
+        # Save unlock code to file
+        unlock_code_file = em.get_event_dir(event_id) / 'unlock_code'
+        with open(unlock_code_file, 'w') as f:
+            f.write(data['unlockCode'])
+
+    updated_event = em.update_event(event_id, updates)
+    if updated_event:
+        return jsonify(updated_event)
+    
+    return jsonify({'error': 'Failed to update event'}), 500
+
 @app.route('/api/events/<event_id>', methods=['DELETE'])
 def delete_event(event_id: str):
     """Delete an event"""

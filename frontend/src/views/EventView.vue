@@ -14,7 +14,19 @@
               </svg>
             </button>
             <div>
-              <h1 class="text-lg font-bold">{{ event?.name || 'Event' }}</h1>
+              <div class="flex items-center gap-2">
+                <h1 class="text-lg font-bold">{{ event?.name || 'Event' }}</h1>
+                <button
+                  v-if="lockState === 'unlocked'"
+                  @click="openEditEventModal"
+                  class="p-1 text-gray-400 hover:text-player-accent hover:bg-gray-700 rounded transition-colors"
+                  title="Edit Event"
+                >
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z" />
+                  </svg>
+                </button>
+              </div>
               <p v-if="event?.description" class="text-sm text-gray-400">{{ event.description }}</p>
             </div>
           </div>
@@ -557,6 +569,15 @@
       </div>
     </div>
 
+    <!-- Edit Event Modal -->
+    <EditEventModal
+      v-if="event"
+      :is-visible="editEventModalVisible"
+      :event="event"
+      @close="closeEditEventModal"
+      @updated="onEventUpdated"
+    />
+
     <!-- Edit Performance Modal -->
     <EditPerformanceModal
       v-if="performanceToEdit"
@@ -579,6 +600,7 @@ import PerformanceCard from '@/components/PerformanceCard.vue'
 import BreakCard from '@/components/BreakCard.vue'
 import MediaPlayer from '@/components/MediaPlayer.vue'
 import EditPerformanceModal from '@/components/EditPerformanceModal.vue'
+import EditEventModal from '@/components/EditEventModal.vue'
 import Sortable from 'sortablejs'
 import type { Performance, Track } from '@/types'
 
@@ -694,6 +716,24 @@ const coverImageUrl = computed(() => {
 // Edit modal state
 const editModalVisible = ref(false)
 const performanceToEdit = ref<Performance | null>(null)
+
+// Edit Event modal state
+const editEventModalVisible = ref(false)
+
+function openEditEventModal() {
+  editEventModalVisible.value = true
+}
+
+function closeEditEventModal() {
+  editEventModalVisible.value = false
+}
+
+async function onEventUpdated(updatedEvent: any) {
+  // Event store handles updating the local state, so just close modal
+  // But we might want to ensure everything is consistent
+  await eventStore.selectEvent(eventId)
+  closeEditEventModal()
+}
 
 // All items are now performances (including breaks which have type='Break')
 const sortedItems = computed(() => {
