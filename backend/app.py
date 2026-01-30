@@ -21,7 +21,11 @@ app = Flask(__name__)
 CORS(app)
 
 # Configuration
-CONFIG_DIR = Path.home() / '.config' / 'performance-manager'
+if os.environ.get('PERFORMANCE_MANAGER_DATA_DIR'):
+    CONFIG_DIR = Path(os.environ['PERFORMANCE_MANAGER_DATA_DIR'])
+else:
+    CONFIG_DIR = Path.home() / '.config' / 'performance-manager'
+
 ALLOWED_EXTENSIONS = {'mp3', 'mp4', 'aac', 'm4a', 'wav', 'flac'}
 ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
 

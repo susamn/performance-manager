@@ -56,6 +56,37 @@ python3 stop.py                  # Stop backend
 python3 stop.py status           # Check status
 ```
 
+## Docker Support
+
+### Using Docker Compose (Recommended)
+
+1. Build and start the container:
+   ```bash
+   docker-compose up -d --build
+   ```
+2. Access the application at `http://localhost:5000`
+3. Data is persisted in a named volume `performance_data`
+
+### Portainer Setup
+
+1. Create a new Stack.
+2. Copy the contents of `docker-compose.yml`.
+3. Deploy the stack.
+
+### Manual Build
+
+```bash
+# Build the image
+docker build -t performance-manager .
+
+# Run the container
+docker run -d \
+  -p 5000:5000 \
+  -v performance_data:/data \
+  --name performance-manager \
+  performance-manager
+```
+
 ## Project Structure
 
 ```

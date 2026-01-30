@@ -54,17 +54,20 @@ is_running() {
 build_frontend() {
     echo -e "${BLUE}🏗️  Building frontend...${NC}"
 
-    if [ ! -d "$PROJECT_DIR/frontend/node_modules" ]; then
+    cd "$PROJECT_DIR/frontend"
+
+    # Check if node_modules exists and if package.json is newer than node_modules
+    if [ ! -d "node_modules" ] || [ "package.json" -nt "node_modules" ]; then
         echo -e "${YELLOW}📦 Installing frontend dependencies...${NC}"
-        cd "$PROJECT_DIR/frontend"
         npm install
         if [ $? -ne 0 ]; then
             echo -e "${RED}❌ Failed to install frontend dependencies${NC}"
             exit 1
         fi
+        # Touch node_modules to update timestamp
+        touch node_modules
     fi
 
-    cd "$PROJECT_DIR/frontend"
     npm run build
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Frontend built successfully${NC}"

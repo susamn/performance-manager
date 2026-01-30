@@ -14,7 +14,9 @@
     "restart": "npm run stop && sleep 2 && npm run start"
   },
   "dependencies": {
+    "@types/howler": "^2.2.12",
     "@vueuse/core": "^10.7.0",
+    "howler": "^2.2.4",
     "pinia": "^2.1.0",
     "sortablejs": "^1.15.0",
     "vue": "^3.4.0",
