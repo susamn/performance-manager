@@ -136,19 +136,38 @@
             v-for="track in performance.tracks"
             :key="track.id"
             class="flex items-center justify-between p-2 bg-gray-700/50 rounded hover:bg-gray-700 transition-colors"
-            :class="{ 'opacity-60': track.isCompleted }"
+            :class="{ 'opacity-60': track.isCompleted || track.isDisabled, 'grayscale': track.isDisabled }"
           >
-            <div class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer" @click.stop="$emit('trackSelected', track)">
+            <div class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer" @click.stop="!track.isDisabled && $emit('trackSelected', track)">
               <div class="flex-1 min-w-0">
-                <p class="text-sm text-white truncate" :class="{ 'line-through': track.isCompleted }">{{ track.filename }}</p>
+                <p class="text-sm text-white truncate" :class="{ 'line-through': track.isCompleted, 'text-gray-500': track.isDisabled }">
+                  {{ track.filename }}
+                  <span v-if="track.isDisabled" class="text-xs text-red-400 ml-2">(Skipped)</span>
+                </p>
                 <p class="text-xs text-gray-400">{{ track.performer }}</p>
               </div>
             </div>
             <div class="flex items-center gap-2">
               <button
+                @click.stop="$emit('toggleTrackDisabled', track)"
+                :class="[
+                  'p-1 rounded transition-colors',
+                  track.isDisabled
+                    ? 'text-red-400 hover:text-red-300 bg-red-900/20'
+                    : 'text-gray-400 hover:text-gray-300 hover:bg-gray-600'
+                ]"
+                :title="track.isDisabled ? 'Enable track' : 'Disable/Skip track'"
+              >
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12C4,13.85 4.63,15.55 5.68,16.91L16.91,5.68C15.55,4.63 13.85,4 12,4M12,20A8,8 0 0,0 20,12C20,10.15 19.37,8.45 18.32,7.09L7.09,18.32C8.45,19.37 10.15,20 12,20Z" />
+                </svg>
+              </button>
+              <button
                 @click.stop="$emit('toggleTrackCompletion', track)"
+                :disabled="track.isDisabled"
                 :class="[
                   'px-2 py-1 text-xs rounded border transition-colors',
+                  track.isDisabled ? 'opacity-50 cursor-not-allowed' : '',
                   track.isCompleted
                     ? 'bg-green-600/20 border-green-500 text-green-300 hover:bg-green-600/30'
                     : 'bg-gray-600/20 border-gray-500 text-gray-300 hover:bg-gray-600/30'
@@ -158,8 +177,9 @@
                 {{ track.isCompleted ? '✓' : '○' }}
               </button>
               <button
-                @click.stop="$emit('trackSelected', track)"
-                class="p-1 text-player-accent hover:text-green-400 transition-colors"
+                @click.stop="!track.isDisabled && $emit('trackSelected', track)"
+                :disabled="track.isDisabled"
+                class="p-1 text-player-accent hover:text-green-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Play track"
               >
                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -204,6 +224,7 @@ defineEmits<{
   delete: [performance: Performance]
   trackSelected: [track: Track]
   toggleTrackCompletion: [track: Track]
+  toggleTrackDisabled: [track: Track]
   deleteTrack: [track: Track]
 }>()
 

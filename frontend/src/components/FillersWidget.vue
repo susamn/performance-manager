@@ -31,7 +31,7 @@
           v-for="item in filteredTracks"
           :key="item.track.id"
           class="px-3 py-2 hover:bg-gray-600 cursor-pointer flex items-center justify-between group"
-          @click="playTrack(item.track)"
+          @click="playTrack(item.track, item.performanceId)"
         >
           <div class="flex-1 min-w-0">
             <p class="text-sm text-white truncate group-hover:text-yellow-400 transition-colors mb-1">{{ item.track.filename }}</p>
@@ -75,6 +75,7 @@ const commonPerformances = ref<Performance[]>([])
 interface TrackResult {
   track: Track
   performanceName: string
+  performanceId: string
 }
 
 function getCategoryStyle(name: string) {
@@ -102,7 +103,8 @@ const filteredTracks = computed<TrackResult[]>(() => {
       if (perfNameMatch || track.filename.toLowerCase().includes(query)) {
         results.push({
           track,
-          performanceName: perf.name
+          performanceName: perf.name,
+          performanceId: perf.id
         })
       }
     })
@@ -135,8 +137,8 @@ async function fetchCommonEventData() {
   }
 }
 
-function playTrack(track: Track) {
-  playerStore.loadTrack(track)
+function playTrack(track: Track, performanceId?: string) {
+  playerStore.loadTrack(track, performanceId)
   showSuggestions.value = false
   // searchQuery.value = '' // Keep search query for now, or clear it? User usually wants to select and done.
   // Let's clear it to indicate selection is done.

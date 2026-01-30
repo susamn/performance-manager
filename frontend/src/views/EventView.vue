@@ -433,6 +433,7 @@
                         @delete="(p) => lockState === 'unlocked' && deletePerformance(p)"
                         @track-selected="(t) => lockState !== 'locked' && onTrackSelected(t)"
                         @toggle-track-completion="(t) => lockState !== 'locked' && toggleTrackCompletion(t)"
+                        @toggle-track-disabled="(t) => lockState === 'unlocked' && toggleTrackDisabled(t)"
                         @delete-track="(t) => lockState === 'unlocked' && deleteTrack(t)"
                         class="performance-card-item"
                         :data-id="item.id"
@@ -469,6 +470,7 @@
                         @delete="(p) => lockState === 'unlocked' && deletePerformance(p)"
                         @track-selected="(t) => lockState !== 'locked' && onTrackSelected(t)"
                         @toggle-track-completion="(t) => lockState !== 'locked' && toggleTrackCompletion(t)"
+                        @toggle-track-disabled="(t) => lockState === 'unlocked' && toggleTrackDisabled(t)"
                         @delete-track="(t) => lockState === 'unlocked' && deleteTrack(t)"
                         class="performance-card-item completed-item"
                         :data-id="item.id"
@@ -1111,7 +1113,27 @@ function onTrackSelected(track: Track) {
       ...track,
       url: track.url?.replace('/api/performances/', `/api/events/${eventId}/performances/`)
     }
-    playerStore.loadTrack(updatedTrack)
+    playerStore.loadTrack(updatedTrack, selectedPerformanceId.value)
+  }
+}
+
+async function toggleTrackDisabled(track: Track) {
+  if (!selectedPerformanceId.value) return
+
+  try {
+    const response = await fetch(`/api/events/${eventId}/performances/${selectedPerformanceId.value}/tracks/${track.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isDisabled: !track.isDisabled })
+    })
+
+    if (!response.ok) throw new Error('Failed to update track status')
+
+    // Reload performances to get updated data
+    await eventStore.loadEventPerformances(eventId)
+  } catch (error) {
+    console.error('Error updating track status:', error)
+    alert('Failed to update track status. Please try again.')
   }
 }
 

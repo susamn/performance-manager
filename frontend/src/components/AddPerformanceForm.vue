@@ -89,18 +89,30 @@
         </div>
       </div>
 
-      <div>
-        <label for="expectedDuration" class="block text-xs font-medium text-gray-300 mb-1.5">
-          Duration (min)
-        </label>
+        <div>
+          <label for="expectedDuration" class="block text-xs font-medium text-gray-300 mb-1.5">
+            Duration (min)
+          </label>
+          <input
+            id="expectedDuration"
+            v-model.number="expectedDuration"
+            type="number"
+            min="1"
+            placeholder="Enter expected duration in minutes"
+            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white text-sm h-[38px]"
+          />
+        </div>
+
+      <div class="flex items-center">
         <input
-          id="expectedDuration"
-          v-model.number="expectedDuration"
-          type="number"
-          min="1"
-          placeholder="Enter expected duration in minutes"
-          class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-player-accent text-white text-sm h-[38px]"
+          id="isContinuous"
+          type="checkbox"
+          v-model="isContinuous"
+          class="w-4 h-4 rounded border-gray-600 text-player-accent focus:ring-player-accent bg-gray-700"
         />
+        <label for="isContinuous" class="ml-2 block text-sm text-gray-300">
+          Continuous Play?
+        </label>
       </div>
 
       <div v-if="!isBreakType">
@@ -168,6 +180,7 @@ const performanceType = ref<'Song' | 'Dance' | 'Recitation' | 'Broadcast' | 'Spe
 const performanceMode = ref<'Solo' | 'Duet' | 'Group'>('Solo')
 const breakSubType = ref<'Lunch' | 'Dinner' | 'Broadcast' | 'Announcement' | 'Appearence' | 'Special Show'>('Lunch')
 const expectedDuration = ref<number | undefined>(undefined)
+const isContinuous = ref(false)
 const selectedFiles = ref<File[]>([])
 const isCreating = ref(false)
 
@@ -221,6 +234,10 @@ async function handleSubmit() {
     if (expectedDuration.value && expectedDuration.value > 0) {
       formData.append('expectedDuration', expectedDuration.value.toString())
     }
+    
+    if (isContinuous.value) {
+      formData.append('isContinuous', 'true')
+    }
 
     if (!isBreakType.value) {
       selectedFiles.value.forEach((file, index) => {
@@ -255,6 +272,7 @@ function clearForm() {
   performanceMode.value = 'Solo'
   breakSubType.value = 'Lunch'
   expectedDuration.value = undefined
+  isContinuous.value = false
   selectedFiles.value = []
   const fileInput = document.getElementById('audioFiles') as HTMLInputElement
   if (fileInput) {

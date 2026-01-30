@@ -5,16 +5,18 @@ export interface Track {
   url?: string
   duration?: number  // Duration in seconds, extracted from audio file
   isCompleted?: boolean
+  isDisabled?: boolean
 }
 
 export interface Performance {
   id: string
   name: string
   performer: string
-  type: 'Song' | 'Dance' | 'Recitation' | 'Break'
+  type: 'Song' | 'Dance' | 'Recitation' | 'Break' | 'Broadcast' | 'Special Event' | 'Fashion Show'
   mode: 'Solo' | 'Duet' | 'Group' | 'Lunch' | 'Dinner' | 'Broadcast' | 'Announcement' | 'Appearence' | 'Special Show'
   tracks: Track[]
   isDone: boolean
+  isContinuous?: boolean
   createdAt: string
   order: number
   expectedDuration?: number // in minutes (manually entered)

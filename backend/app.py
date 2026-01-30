@@ -155,7 +155,7 @@ class EventManager:
         """Get directory path for a performance within an event"""
         return self.get_event_dir(event_id) / performance_id
 
-    def create_performance(self, event_id: str, name: str, performer: str = '', perf_type: str = 'Song', mode: str = 'Solo', expected_duration: Optional[int] = None) -> Dict[str, Any]:
+    def create_performance(self, event_id: str, name: str, performer: str = '', perf_type: str = 'Song', mode: str = 'Solo', expected_duration: Optional[int] = None, is_continuous: bool = False) -> Dict[str, Any]:
         """Create a new performance within an event"""
         event = self.get_event(event_id)
         if not event:
@@ -175,6 +175,7 @@ class EventManager:
             'mode': mode,
             'tracks': [],
             'isDone': False,
+            'isContinuous': is_continuous,
             'createdAt': datetime.now().isoformat(),
             'order': len(performances)
         }
@@ -201,6 +202,22 @@ class EventManager:
             self.save_event_performances(event_id, performances)
             return performance
         return None
+
+    def update_track(self, event_id: str, performance_id: str, track_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Update a track's properties"""
+        try:
+            performances = self.load_event_performances(event_id)
+            performance = next((p for p in performances if p['id'] == performance_id), None)
+
+            if performance:
+                track = next((t for t in performance['tracks'] if t['id'] == track_id), None)
+                if track:
+                    track.update(updates)
+                    self.save_event_performances(event_id, performances)
+                    return track
+            return None
+        except Exception:
+            return None
 
     def delete_performance(self, event_id: str, performance_id: str) -> bool:
         """Delete a performance and its files within an event"""
@@ -617,6 +634,7 @@ def create_event_performance(event_id: str):
         perf_type = request.form.get('type', 'Song')
         mode = request.form.get('mode', 'Solo')
         expected_duration = request.form.get('expectedDuration')
+        is_continuous = request.form.get('isContinuous') == 'true'
 
         if not name:
             return jsonify({'error': 'Name is required'}), 400
@@ -630,7 +648,7 @@ def create_event_performance(event_id: str):
                 pass
 
         # Create performance
-        performance = em.create_performance(event_id, name, performer, perf_type, mode, duration)
+        performance = em.create_performance(event_id, name, performer, perf_type, mode, duration, is_continuous)
         if not performance:
             return jsonify({'error': 'Failed to create performance'}), 500
 
@@ -670,7 +688,8 @@ def create_event_performance(event_id: str):
             data.get('performer', ''),
             data.get('type', 'Song'),
             data.get('mode', 'Solo'),
-            data.get('expectedDuration')
+            data.get('expectedDuration'),
+            data.get('isContinuous', False)
         )
         if performance:
             return jsonify(performance), 201
@@ -817,6 +836,26 @@ def reorder_event_performances(event_id: str):
     if em.reorder_performances(event_id, data['order']):
         return jsonify({'success': True})
     return jsonify({'error': 'Failed to reorder performances'}), 500
+
+@app.route('/api/events/<event_id>/performances/<performance_id>/tracks/<track_id>', methods=['PUT'])
+def update_track(event_id: str, performance_id: str, track_id: str):
+    """Update a specific track's properties"""
+    event = em.get_event(event_id)
+    if not event:
+        return jsonify({'error': 'Event not found'}), 404
+
+    performance = em.get_performance(event_id, performance_id)
+    if not performance:
+        return jsonify({'error': 'Performance not found'}), 404
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    updated_track = em.update_track(event_id, performance_id, track_id, data)
+    if updated_track:
+        return jsonify(updated_track)
+    return jsonify({'error': 'Track not found or failed to update'}), 404
 
 @app.route('/api/events/<event_id>/performances/<performance_id>/tracks/<track_id>/completion', methods=['PUT'])
 def update_track_completion(event_id: str, performance_id: str, track_id: str):

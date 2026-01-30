@@ -71,7 +71,7 @@ export const usePlayerStore = defineStore('player', () => {
     }
   }
 
-  function loadTrack(track: Track) {
+  function loadTrack(track: Track, performanceId?: string) {
     if (!track.url) return
 
     // Clean up previous instance
@@ -85,7 +85,7 @@ export const usePlayerStore = defineStore('player', () => {
     loadProgress.value = 0
 
     currentTrack.value = track
-    playState.value.currentPerformanceId = undefined
+    playState.value.currentPerformanceId = performanceId
     playState.value.currentTrackId = track.id
 
     // Create new Howl instance with streaming configuration
@@ -163,6 +163,42 @@ export const usePlayerStore = defineStore('player', () => {
         stopTimeUpdates()
         // Remote player handles its own end, but we can ensure stop
         sendRemoteCommand('stop') 
+
+        // Continuous Play Logic
+        if (playState.value.currentPerformanceId && playState.value.currentTrackId) {
+            const performance = eventStore.eventPerformances.find(p => p.id === playState.value.currentPerformanceId)
+            if (performance && performance.isContinuous) {
+                // Find current track index
+                const currentIndex = performance.tracks.findIndex(t => t.id === playState.value.currentTrackId)
+                if (currentIndex !== -1) {
+                    // Find next enabled track
+                    const nextTrack = performance.tracks.slice(currentIndex + 1).find(t => !t.isDisabled)
+                    if (nextTrack) {
+                        console.log('Continuous play: Advancing to next track', nextTrack.filename)
+                        // Use updated URL format if needed, similar to EventView logic
+                        const eventId = eventStore.selectedEvent?.id
+                        if (eventId && nextTrack.url) {
+                             // Ensure URL is absolute/correct relative to event
+                             // The track objects in store usually have relative URLs like /api/events/...
+                             // so we can just pass it directly if it's already correct.
+                             // But wait, EventView constructs it:
+                             // url: track.url?.replace('/api/performances/', `/api/events/${eventId}/performances/`)
+                             // The backend add_track already sets the full URL: 
+                             // url: f'/api/events/{event_id}/performances/{performance_id}/files/{filename}'
+                             // So we should be fine using nextTrack as is.
+                             loadTrack(nextTrack, performance.id)
+                             // Auto-play the next track
+                             // We need to wait for load? loadTrack creates Howl.
+                             // We can try to play immediately, but Howl might need a moment.
+                             // Howl 'autoplay' option? Or just call play() in onload?
+                             // loadTrack doesn't call play().
+                             // We can chain it.
+                             setTimeout(() => play(), 100)
+                        }
+                    }
+                }
+            }
+        }
       },
 
       onseek: () => {
