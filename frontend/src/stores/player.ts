@@ -71,11 +71,27 @@ export const usePlayerStore = defineStore('player', () => {
     }
   }
 
-  function loadTrack(track: Track, performanceId?: string) {
+  function loadTrack(track: Track, performanceId?: string, options: { crossfade?: boolean } = {}) {
     if (!track.url) return
 
-    // Clean up previous instance
-    cleanupHowl()
+    isCrossfading = options.crossfade || false
+
+    // If crossfading, keep old instance alive briefly to fade out
+    if (options.crossfade && howlInstance.value) {
+        const oldHowl = howlInstance.value
+        // CRITICAL: Remove event listeners from old instance so its end/stop doesn't kill the new one
+        oldHowl.off('end')
+        oldHowl.off('stop')
+        oldHowl.off('pause')
+        
+        oldHowl.fade(oldHowl.volume(), 0, 10000) // Fade out over 10s
+        setTimeout(() => {
+            oldHowl.unload()
+        }, 10000)
+    } else {
+        // Clean up previous instance normally
+        cleanupHowl()
+    }
 
     // Reset state
     playState.value.currentTime = 0
@@ -89,31 +105,45 @@ export const usePlayerStore = defineStore('player', () => {
     playState.value.currentTrackId = track.id
 
     // Create new Howl instance with streaming configuration
-    howlInstance.value = new Howl({
+    const newHowl = new Howl({
       src: [track.url],
       html5: true,          // Force HTML5 for streaming
       preload: 'metadata',  // Only load metadata initially
       format: ['mp3', 'mp4', 'aac', 'm4a', 'wav', 'flac', 'wma'],
-      volume: 1.0,
+      volume: options.crossfade ? 0 : 1.0, // Start at 0 if crossfading
 
       // Event handlers
       onload: () => {
         isLoading.value = false
         loadProgress.value = 100
-        if (howlInstance.value) {
-          playState.value.duration = howlInstance.value.duration() || track.duration || 0
+        if (newHowl) {
+          playState.value.duration = newHowl.duration() || track.duration || 0
         }
         console.log('Track loaded successfully (streaming ready)')
+        
+        // Auto-play if crossfading (it's a transition)
+        if (options.crossfade) {
+            newHowl.play()
+        }
       },
 
       onloaderror: (id: number, error: unknown) => {
         isLoading.value = false
         console.error('Failed to load track:', error)
+        isCrossfading = false
       },
 
       onplay: () => {
         playState.value.isPlaying = true
         startTimeUpdates()
+        
+        if (options.crossfade) {
+            newHowl.fade(0, 1.0, 5000) // Fade in over 5s
+            // Reset crossfading flag after transition
+            setTimeout(() => {
+                isCrossfading = false
+            }, 5000)
+        }
         
         // Trigger remote play
         if (isRemoteEnabled.value && track.url) {
@@ -140,7 +170,10 @@ export const usePlayerStore = defineStore('player', () => {
                 }
             }
             
-            sendRemoteCommand('play', { url: remoteUrl })
+            sendRemoteCommand('play', { 
+                url: remoteUrl,
+                crossfade: options.crossfade 
+            })
         }
       },
 
@@ -155,6 +188,7 @@ export const usePlayerStore = defineStore('player', () => {
         playState.value.currentTime = 0
         stopTimeUpdates()
         sendRemoteCommand('stop')
+        isCrossfading = false
       },
 
       onend: () => {
@@ -163,41 +197,25 @@ export const usePlayerStore = defineStore('player', () => {
         stopTimeUpdates()
         // Remote player handles its own end, but we can ensure stop
         sendRemoteCommand('stop') 
-
-        // Continuous Play Logic
-        if (playState.value.currentPerformanceId && playState.value.currentTrackId) {
-            const performance = eventStore.eventPerformances.find(p => p.id === playState.value.currentPerformanceId)
-            if (performance && performance.isContinuous) {
-                // Find current track index
-                const currentIndex = performance.tracks.findIndex(t => t.id === playState.value.currentTrackId)
-                if (currentIndex !== -1) {
-                    // Find next enabled track
+        
+        // Handle natural end (if not crossfading)
+        if (!isCrossfading && playState.value.currentPerformanceId) {
+             const performance = eventStore.eventPerformances.find(p => p.id === playState.value.currentPerformanceId)
+             if (performance && performance.isContinuous) {
+                 // Check if we reached end without triggering crossfade (e.g. track < 10s)
+                 // Just play next immediately
+                 const currentIndex = performance.tracks.findIndex(t => t.id === playState.value.currentTrackId)
+                 if (currentIndex !== -1) {
                     const nextTrack = performance.tracks.slice(currentIndex + 1).find(t => !t.isDisabled)
                     if (nextTrack) {
-                        console.log('Continuous play: Advancing to next track', nextTrack.filename)
-                        // Use updated URL format if needed, similar to EventView logic
-                        const eventId = eventStore.selectedEvent?.id
-                        if (eventId && nextTrack.url) {
-                             // Ensure URL is absolute/correct relative to event
-                             // The track objects in store usually have relative URLs like /api/events/...
-                             // so we can just pass it directly if it's already correct.
-                             // But wait, EventView constructs it:
-                             // url: track.url?.replace('/api/performances/', `/api/events/${eventId}/performances/`)
-                             // The backend add_track already sets the full URL: 
-                             // url: f'/api/events/{event_id}/performances/{performance_id}/files/{filename}'
-                             // So we should be fine using nextTrack as is.
-                             loadTrack(nextTrack, performance.id)
-                             // Auto-play the next track
-                             // We need to wait for load? loadTrack creates Howl.
-                             // We can try to play immediately, but Howl might need a moment.
-                             // Howl 'autoplay' option? Or just call play() in onload?
-                             // loadTrack doesn't call play().
-                             // We can chain it.
-                             setTimeout(() => play(), 100)
-                        }
+                        loadTrack(nextTrack, performance.id)
+                        // Auto play for gapless
+                        setTimeout(() => {
+                            if (howlInstance.value) howlInstance.value.play()
+                        }, 100)
                     }
-                }
-            }
+                 }
+             }
         }
       },
 
@@ -209,16 +227,38 @@ export const usePlayerStore = defineStore('player', () => {
         }
       }
     })
+    
+    howlInstance.value = newHowl
   }
 
   // Time update management
   let timeUpdateInterval: number | null = null
+  let isCrossfading = false
 
   function startTimeUpdates() {
     stopTimeUpdates()
     timeUpdateInterval = setInterval(() => {
       if (howlInstance.value && playState.value.isPlaying) {
-        playState.value.currentTime = howlInstance.value.seek() as number
+        const seek = howlInstance.value.seek() as number
+        playState.value.currentTime = seek
+        
+        // Continuous Play Crossfade Trigger
+        if (playState.value.currentPerformanceId && !isCrossfading && playState.value.duration > 15) {
+            const remaining = playState.value.duration - seek
+            if (remaining <= 10 && remaining > 9) { // Trigger window around 10s remaining
+                const performance = eventStore.eventPerformances.find(p => p.id === playState.value.currentPerformanceId)
+                if (performance && performance.isContinuous) {
+                    const currentIndex = performance.tracks.findIndex(t => t.id === playState.value.currentTrackId)
+                    if (currentIndex !== -1) {
+                        const nextTrack = performance.tracks.slice(currentIndex + 1).find(t => !t.isDisabled)
+                        if (nextTrack) {
+                            console.log('Starting crossfade to:', nextTrack.filename)
+                            loadTrack(nextTrack, performance.id, { crossfade: true })
+                        }
+                    }
+                }
+            }
+        }
       }
     }, 100) // Update every 100ms for smooth progress
   }

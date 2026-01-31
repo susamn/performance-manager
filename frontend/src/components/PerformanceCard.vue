@@ -5,7 +5,8 @@
       'selected': isSelected,
       'done': performance.isDone,
       'disabled': disabled,
-      'break-type': performance.type === 'Break'
+      'break-type': performance.type === 'Break',
+      'is-continuous': performance.isContinuous
     }"
   >
     <!-- Main Performance Card View -->
@@ -38,6 +39,15 @@
                   :style="getModeStyle(performance.mode)"
                 >
                   {{ performance.mode }}
+                </span>
+                <span
+                  v-if="performance.isContinuous"
+                  class="px-2 py-0.5 rounded-full text-[10px] font-bold border border-yellow-500/50 bg-yellow-500/10 text-yellow-400 uppercase tracking-wider flex items-center gap-1"
+                >
+                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M10,16.5V7.5L16,12" />
+                  </svg>
+                  Continuous
                 </span>
               </div>
               <div class="flex items-center gap-2 text-xs text-gray-400 mb-1">
@@ -310,5 +320,15 @@ function getModeStyle(mode: string): { backgroundColor: string; borderColor: str
 
 .performance-card.break-type.done {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(99, 102, 241, 0.05));
+}
+
+.performance-card.is-continuous {
+  border-left: 4px solid #eab308; /* yellow-500 */
+  background: linear-gradient(90deg, rgba(234, 179, 8, 0.05) 0%, transparent 100%), rgba(55, 65, 81, 1);
+}
+
+.performance-card.is-continuous.selected {
+  background: linear-gradient(90deg, rgba(234, 179, 8, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
+  border-color: rgba(234, 179, 8, 0.5);
 }
 </style>
