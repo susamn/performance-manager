@@ -1,5 +1,11 @@
 <template>
   <div class="min-h-screen bg-gray-900 text-white">
+    <!-- Autoplay Blocked Alert -->
+    <div v-if="playerStore.autoplayBlocked" class="bg-red-500 text-white p-4 text-center cursor-pointer font-bold animate-pulse" @click="playerStore.autoplayBlocked = false">
+      ⚠️ AUDIO AUTOPLAY BLOCKED BY BROWSER ⚠️<br>
+      <span class="text-sm font-normal">Click anywhere on this red banner to unlock audio playback.</span>
+    </div>
+
     <!-- Header -->
     <div class="sticky top-0 bg-gray-800 border-b border-gray-700 z-10">
       <div class="max-w-7xl mx-auto px-4 py-4">

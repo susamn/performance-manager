@@ -16,6 +16,20 @@ export const usePlayerStore = defineStore('player', () => {
   const howlInstance = ref<Howl | null>(null)
   const isLoading = ref(false)
   const loadProgress = ref(0)
+  
+  // Fix #4: Track browser autoplay policy status
+  const audioUnlocked = ref(false)
+  const autoplayBlocked = ref(false)
+
+  // One-time listener to unlock audio state
+  const unlockAudio = () => {
+    audioUnlocked.value = true
+    autoplayBlocked.value = false
+    document.removeEventListener('click', unlockAudio)
+    document.removeEventListener('touchstart', unlockAudio)
+  }
+  document.addEventListener('click', unlockAudio)
+  document.addEventListener('touchstart', unlockAudio)
 
   // Listen for performer commands
   socket.on('admin_receive_command', (cmd: any) => {
@@ -167,6 +181,10 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function play() {
+    if (!audioUnlocked.value) {
+      autoplayBlocked.value = true
+      console.warn('Autoplay blocked by browser. User interaction required.')
+    }
     if (howlInstance.value) {
       howlInstance.value.play()
     }
@@ -229,6 +247,8 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   return {
+    audioUnlocked,
+    autoplayBlocked,
     playState,
     currentTrack,
     howlInstance,
