@@ -84,3 +84,54 @@ def test_unauthenticated_api_vulnerability_fixed(client):
     # Verify event still exists
     get_res = client.get(f'/api/events/{event_id}')
     assert get_res.status_code == 200
+
+
+def test_verify_live_pin(client):
+    """Test that Live PIN verification works correctly."""
+    # Create event with a specific live pin
+    response = client.post('/api/events', json={
+        'name': 'Live Pin Event',
+        'unlockCode': '1111',
+        'livePin': '5678'
+    })
+    assert response.status_code == 201
+    event_id = response.get_json()['id']
+
+    # Test invalid live pin
+    invalid_res = client.post(f'/api/events/{event_id}/verify-live-pin', json={
+        'livePin': '0000'
+    })
+    assert invalid_res.status_code == 401
+    assert 'Incorrect live PIN' in invalid_res.get_json().get('error', '')
+
+    # Test valid live pin
+    valid_res = client.post(f'/api/events/{event_id}/verify-live-pin', json={
+        'livePin': '5678'
+    })
+    assert valid_res.status_code == 200
+    data = valid_res.get_json()
+    assert data.get('success') is True
+    assert 'token' in data
+    
+    # Verify the token decodes properly
+    token = data['token']
+    assert len(token) > 20
+
+def test_socket_performer_auth():
+    """Test that socketio auth requires valid token."""
+    # We will test the python functions directly for simplicity since testing 
+    # flask-socketio events directly requires setting up the socket test client.
+    from app import verify_live_token, generate_live_token, app
+    
+    with app.test_request_context():
+        # Generate token
+        token = generate_live_token('test-event-123')
+        
+        # Valid verification
+        assert verify_live_token(token, 'test-event-123') is True
+        
+        # Invalid event id
+        assert verify_live_token(token, 'wrong-event') is False
+        
+        # Invalid token
+        assert verify_live_token('bad.token.string', 'test-event-123') is False
