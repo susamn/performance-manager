@@ -19,8 +19,23 @@
             </div>
           </div>
 
-          <!-- Lock Toggle Button -->
-          <div class="relative">
+          <!-- Header Actions -->
+          <div class="flex items-center space-x-3">
+            <!-- Open Live View Button -->
+            <a
+              :href="`/events/${eventId}/live`"
+              target="_blank"
+              class="px-4 py-2 bg-player-accent hover:bg-green-400 text-black font-semibold rounded-lg flex items-center space-x-2 transition-colors text-sm shadow-lg shadow-player-accent/20"
+              title="Open Live Performer View"
+            >
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z" />
+              </svg>
+              <span class="hidden sm:inline">Open Live View</span>
+            </a>
+
+            <!-- Lock Toggle Button -->
+            <div class="relative">
             <button
               @click="cycleLockState"
               class="p-2.5 rounded-full transition-all duration-300 border-2"
@@ -78,6 +93,7 @@
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
 
