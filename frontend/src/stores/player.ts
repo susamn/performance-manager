@@ -19,6 +19,10 @@ export const usePlayerStore = defineStore('player', () => {
   // Listen for performer commands
   socket.on('admin_receive_command', (cmd: any) => {
     console.log('Received command from performer:', cmd)
+    if (cmd.eventId) {
+      playState.value.currentEventId = cmd.eventId
+    }
+    
     if (cmd.action === 'play') play()
     if (cmd.action === 'pause') pause()
     if (cmd.action === 'stop') stop()

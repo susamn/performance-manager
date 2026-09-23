@@ -150,7 +150,7 @@ onUnmounted(() => {
 })
 
 function sendCommand(action: string) {
-  socket.emit('performer_send_command', { action })
+  socket.emit('performer_send_command', { action, eventId: activeEventId.value })
 }
 
 function selectTrack(track: Track) {
@@ -164,7 +164,7 @@ function selectTrack(track: Track) {
       ...track,
       url: fixedUrl
     }
-    socket.emit('performer_send_command', { action: 'loadTrack', track: trackWithUrl })
+    socket.emit('performer_send_command', { action: 'loadTrack', track: trackWithUrl, eventId: activeEventId.value })
   }
 }
 
