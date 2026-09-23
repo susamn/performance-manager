@@ -29,33 +29,59 @@
       </div>
 
       <!-- Playback Progress Visualization (Permanent Player Area) -->
-      <div class="mb-6 p-6 bg-gray-800 rounded-2xl border-2 border-gray-700 text-center relative overflow-hidden transition-colors"
-           :class="{'border-player-accent/50 shadow-[0_0_20px_rgba(16,185,129,0.1)]': currentTrackId}">
+      <div class="mb-8 relative overflow-hidden rounded-3xl bg-gray-900 border transition-all duration-300"
+           :class="currentTrackId ? 'border-player-accent/40 shadow-[0_8px_30px_rgb(0,0,0,0.12)] shadow-player-accent/20' : 'border-gray-800'">
         
-        <div v-if="currentTrackId" class="absolute inset-0 bg-player-accent/5" :style="{ width: `${progress}%` }"></div>
+        <!-- Background Progress -->
+        <div v-if="currentTrackId" class="absolute inset-y-0 left-0 bg-gradient-to-r from-player-accent/10 to-player-accent/5 transition-all duration-200" :style="{ width: `${progress}%` }"></div>
         
-        <div class="relative z-10">
-          <p class="text-sm text-gray-400 mb-1">Now Playing</p>
-          <p class="text-xl font-bold text-white mb-4 truncate">{{ currentTrackName || 'No track selected' }}</p>
+        <div class="relative z-10 p-6 sm:p-8 flex flex-col items-center">
           
-          <div class="flex items-center justify-between text-sm font-mono text-gray-400 mb-4" :class="{'text-player-accent': currentTrackId}">
-            <span>{{ formatTime(playState.currentTime) }}</span>
-            <span>{{ formatTime(playState.duration) }}</span>
+          <!-- Audio Spectrum Visualization -->
+          <div class="flex items-end justify-center h-12 mb-6 gap-1 w-full" :class="{'opacity-50 grayscale': !playState.isPlaying && currentTrackId, 'opacity-10': !currentTrackId}">
+            <div v-for="i in 15" :key="i" 
+                 class="w-1.5 sm:w-2 bg-player-accent rounded-t-sm"
+                 :class="playState.isPlaying ? 'animate-soundwave' : 'h-1'"
+                 :style="{ animationDelay: `${Math.random() * 0.5}s`, height: playState.isPlaying ? `${Math.max(20, Math.random() * 100)}%` : '4px' }">
+            </div>
           </div>
 
-          <div class="flex justify-center gap-6">
+          <p class="text-xs font-bold tracking-widest text-gray-500 uppercase mb-2">Now Playing</p>
+          <p class="text-2xl font-bold text-white mb-6 text-center w-full truncate px-4"
+             :class="{'text-gray-600': !currentTrackId}">
+             {{ currentTrackName || 'No track selected' }}
+          </p>
+          
+          <!-- Progress Bar & Time -->
+          <div class="w-full max-w-md mx-auto mb-8 px-2">
+            <div class="flex items-center justify-between text-sm font-mono text-gray-400 mb-2" :class="{'text-player-accent': currentTrackId}">
+              <span>{{ formatTime(playState.currentTime) }}</span>
+              <span>{{ formatTime(playState.duration) }}</span>
+            </div>
+            <div class="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
+              <div class="h-full bg-player-accent transition-all duration-200" :style="{ width: `${progress}%` }"></div>
+            </div>
+          </div>
+
+          <!-- Controls -->
+          <div class="flex items-center justify-center gap-6 sm:gap-8">
             <button @click="sendCommand('stop')" 
                     :disabled="!currentTrackId"
-                    class="w-16 h-16 rounded-full flex items-center justify-center text-white transition-colors"
-                    :class="currentTrackId ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-800 opacity-50 cursor-not-allowed'">
-              <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M18,18H6V6H18V18Z" /></svg>
+                    class="w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200"
+                    :class="currentTrackId ? 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white border border-gray-700' : 'bg-gray-800/50 text-gray-600 cursor-not-allowed'">
+              <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M18,18H6V6H18V18Z" /></svg>
             </button>
+            
             <button @click="sendCommand(playState.isPlaying ? 'pause' : 'play')" 
                     :disabled="!currentTrackId"
-                    class="w-20 h-20 rounded-full flex items-center justify-center text-black transition-colors"
-                    :class="currentTrackId ? 'bg-player-accent hover:bg-green-400 shadow-[0_0_20px_rgba(16,185,129,0.3)]' : 'bg-gray-700 opacity-50 cursor-not-allowed'">
+                    class="w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 transform"
+                    :class="currentTrackId ? 'bg-player-accent text-black hover:scale-105 shadow-lg shadow-player-accent/30' : 'bg-gray-800/50 text-gray-600 cursor-not-allowed'">
               <svg v-if="playState.isPlaying" class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M14,19H18V5H14M6,19H10V5H6V19Z" /></svg>
               <svg v-else class="w-10 h-10 ml-2" fill="currentColor" viewBox="0 0 24 24"><path d="M8,5.14V19.14L19,12.14L8,5.14Z" /></svg>
+            </button>
+            
+            <button class="w-14 h-14 rounded-full flex items-center justify-center bg-transparent text-transparent pointer-events-none">
+              <!-- Empty spacer to balance the stop button visually -->
             </button>
           </div>
         </div>
@@ -175,3 +201,18 @@ function formatTime(seconds: number | undefined): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 </script>
+<style scoped>
+@keyframes soundwave {
+  0%, 100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.animate-soundwave {
+  animation: soundwave 1s ease-in-out infinite;
+  transform-origin: bottom;
+}
+</style>
