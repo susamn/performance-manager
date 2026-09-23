@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { Howl } from 'howler'
 import type { PlayState, Track } from '@/types'
+import { socket } from '@/socket'
 
 export const usePlayerStore = defineStore('player', () => {
   const playState = ref<PlayState>({
@@ -14,6 +15,24 @@ export const usePlayerStore = defineStore('player', () => {
   const howlInstance = ref<Howl | null>(null)
   const isLoading = ref(false)
   const loadProgress = ref(0)
+
+  // Listen for performer commands
+  socket.on('admin_receive_command', (cmd: any) => {
+    console.log('Received command from performer:', cmd)
+    if (cmd.action === 'play') play()
+    if (cmd.action === 'pause') pause()
+    if (cmd.action === 'stop') stop()
+    if (cmd.action === 'seek' && typeof cmd.percentage === 'number') seek(cmd.percentage)
+    if (cmd.action === 'loadTrack' && cmd.track) {
+      loadTrack(cmd.track)
+      // Automatically play when performer selects a track
+      setTimeout(() => play(), 100) 
+    }
+  })
+
+  function broadcastState() {
+    socket.emit('admin_update_play_state', playState.value)
+  }
 
   const formattedCurrentTime = computed(() => formatTime(playState.value.currentTime))
   const formattedDuration = computed(() => formatTime(playState.value.duration))
@@ -51,6 +70,8 @@ export const usePlayerStore = defineStore('player', () => {
     currentTrack.value = track
     playState.value.currentPerformanceId = undefined
     playState.value.currentTrackId = track.id
+    
+    broadcastState()
 
     // Create new Howl instance with streaming configuration
     howlInstance.value = new Howl({
@@ -66,6 +87,7 @@ export const usePlayerStore = defineStore('player', () => {
         loadProgress.value = 100
         if (howlInstance.value) {
           playState.value.duration = howlInstance.value.duration() || track.duration || 0
+          broadcastState()
         }
         console.log('Track loaded successfully (streaming ready)')
       },
@@ -77,29 +99,34 @@ export const usePlayerStore = defineStore('player', () => {
 
       onplay: () => {
         playState.value.isPlaying = true
+        broadcastState()
         startTimeUpdates()
       },
 
       onpause: () => {
         playState.value.isPlaying = false
+        broadcastState()
         stopTimeUpdates()
       },
 
       onstop: () => {
         playState.value.isPlaying = false
         playState.value.currentTime = 0
+        broadcastState()
         stopTimeUpdates()
       },
 
       onend: () => {
         playState.value.isPlaying = false
         playState.value.currentTime = 0
+        broadcastState()
         stopTimeUpdates()
       },
 
       onseek: () => {
         if (howlInstance.value) {
           playState.value.currentTime = howlInstance.value.seek() as number
+          broadcastState()
         }
       }
     })
@@ -113,8 +140,9 @@ export const usePlayerStore = defineStore('player', () => {
     timeUpdateInterval = setInterval(() => {
       if (howlInstance.value && playState.value.isPlaying) {
         playState.value.currentTime = howlInstance.value.seek() as number
+        broadcastState()
       }
-    }, 100) // Update every 100ms for smooth progress
+    }, 100) as any // Update every 100ms for smooth progress
   }
 
   function stopTimeUpdates() {

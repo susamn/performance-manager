@@ -624,6 +624,7 @@ import MediaPlayer from '@/components/MediaPlayer.vue'
 import EditPerformanceModal from '@/components/EditPerformanceModal.vue'
 import Sortable from 'sortablejs'
 import type { Performance, Track } from '@/types'
+import { socket } from '@/socket'
 
 const route = useRoute()
 const eventStore = useEventStore()
@@ -1059,8 +1060,18 @@ async function onPerformanceCreated(performance: Performance) {
 function selectPerformance(performance: Performance) {
   if (selectedPerformanceId.value === performance.id) {
     eventStore.selectPerformance(null)
+    socket.emit('admin_set_active_performance', {
+      eventId: eventId,
+      eventName: event.value?.name,
+      performance: null
+    })
   } else {
     eventStore.selectPerformance(performance.id)
+    socket.emit('admin_set_active_performance', {
+      eventId: eventId,
+      eventName: event.value?.name,
+      performance: performance
+    })
   }
 }
 
