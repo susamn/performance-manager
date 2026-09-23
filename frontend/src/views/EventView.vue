@@ -1138,6 +1138,7 @@ async function deletePerformance(performance: Performance) {
 function onTrackSelected(track: Track) {
   // Only play tracks from the selected performance
   if (selectedPerformanceId.value) {
+    playerStore.playState.currentEventId = eventId
     const updatedTrack = {
       ...track,
       url: track.url?.replace('/api/performances/', `/api/events/${eventId}/performances/`)

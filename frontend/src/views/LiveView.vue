@@ -86,9 +86,13 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { socket } from '@/socket'
 import type { Performance, Track, PlayState } from '@/types'
 
+const props = defineProps<{
+  eventId: string
+}>()
+
 const activePerformance = ref<Performance | null>(null)
 const eventName = ref<string>('')
-const activeEventId = ref<string>('')
+const activeEventId = ref<string>(props.eventId)
 const playState = ref<PlayState>({
   isPlaying: false,
   currentTime: 0,
@@ -103,21 +107,34 @@ const currentTrackName = computed(() => {
 })
 
 onMounted(() => {
+  // Request current state for this specific event
+  socket.emit('request_live_state', { eventId: props.eventId })
+  
+  // Also request it if we reconnect
+  socket.on('connected', () => {
+    socket.emit('request_live_state', { eventId: props.eventId })
+  })
+
   socket.on('active_live_state', (state: any) => {
-    activeEventId.value = state.eventId
-    eventName.value = state.eventName
-    activePerformance.value = state.performance
-    if (state.playState) {
-      playState.value = state.playState
+    if (state.eventId === props.eventId) {
+      activeEventId.value = state.eventId
+      eventName.value = state.eventName
+      activePerformance.value = state.performance
+      if (state.playState) {
+        playState.value = state.playState
+      }
     }
   })
 
-  socket.on('play_state_updated', (state: PlayState) => {
-    playState.value = state
+  socket.on('play_state_updated', (data: any) => {
+    if (data.eventId === props.eventId) {
+      playState.value = data.playState
+    }
   })
 })
 
 onUnmounted(() => {
+  socket.off('connected')
   socket.off('active_live_state')
   socket.off('play_state_updated')
 })

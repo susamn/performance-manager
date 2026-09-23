@@ -18,9 +18,10 @@ const router = createRouter({
       props: true
     },
     {
-      path: '/live',
+      path: '/events/:eventId/live',
       name: 'live',
-      component: LiveView
+      component: LiveView,
+      props: true
     }
   ]
 })

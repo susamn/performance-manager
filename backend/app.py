@@ -22,18 +22,23 @@ app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Global state for Live View
-active_live_state = {
-    'eventId': None,
-    'eventName': None,
-    'performance': None,
-    'playState': {
-        'isPlaying': False,
-        'currentTime': 0,
-        'duration': 0,
-        'currentTrackId': None
-    }
-}
+# Global state for Live View (per event)
+active_live_states = {}
+
+def get_event_state(event_id):
+    if event_id not in active_live_states:
+        active_live_states[event_id] = {
+            'eventId': event_id,
+            'eventName': None,
+            'performance': None,
+            'playState': {
+                'isPlaying': False,
+                'currentTime': 0,
+                'duration': 0,
+                'currentTrackId': None
+            }
+        }
+    return active_live_states[event_id]
 
 # Configuration
 CONFIG_DIR = Path.home() / '.config' / 'performance-manager'
@@ -1033,35 +1038,52 @@ def serve_static(path):
 # --- WebSockets ---
 @socketio.on('connect')
 def handle_connect():
-    """Send current state to newly connected client"""
-    emit('active_live_state', active_live_state)
+    """Send current states to newly connected client"""
+    # For a newly connected client, we can't send a specific event's state unless requested.
+    # We will let the client request it, but we can emit a general 'connected' event
+    emit('connected', {'status': 'ok'})
+
+@socketio.on('request_live_state')
+def handle_request_live_state(data):
+    """Client specifically requests the state for an event"""
+    event_id = data.get('eventId')
+    if event_id:
+        emit('active_live_state', get_event_state(event_id))
 
 @socketio.on('admin_set_active_performance')
 def handle_admin_set_active_performance(data):
     """Admin has selected a new active performance"""
-    active_live_state['eventId'] = data.get('eventId')
-    active_live_state['eventName'] = data.get('eventName')
-    active_live_state['performance'] = data.get('performance')
+    event_id = data.get('eventId')
+    if not event_id: return
+    
+    state = get_event_state(event_id)
+    state['eventName'] = data.get('eventName')
+    state['performance'] = data.get('performance')
     
     # Reset play state when performance changes
-    active_live_state['playState'] = {
+    state['playState'] = {
         'isPlaying': False,
         'currentTime': 0,
         'duration': 0,
         'currentTrackId': None
     }
-    emit('active_live_state', active_live_state, broadcast=True)
+    emit('active_live_state', state, broadcast=True)
 
 @socketio.on('admin_update_play_state')
 def handle_admin_update_play_state(data):
     """Admin player state updated (play/pause/seek)"""
-    active_live_state['playState'] = data
-    emit('play_state_updated', active_live_state['playState'], broadcast=True)
+    event_id = data.get('eventId')
+    if not event_id: return
+    
+    state = get_event_state(event_id)
+    state['playState'] = data.get('playState', {})
+    
+    emit('play_state_updated', {'eventId': event_id, 'playState': state['playState']}, broadcast=True)
 
 @socketio.on('performer_send_command')
 def handle_performer_send_command(data):
     """Performer sent a command (play, pause, stop, etc.)"""
-    # Just forward this command to all clients (including admin)
+    # Forward this command to all clients (including admin)
     emit('admin_receive_command', data, broadcast=True)
 
 if __name__ == '__main__':

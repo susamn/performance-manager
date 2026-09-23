@@ -31,7 +31,12 @@ export const usePlayerStore = defineStore('player', () => {
   })
 
   function broadcastState() {
-    socket.emit('admin_update_play_state', playState.value)
+    if (playState.value.currentEventId) {
+      socket.emit('admin_update_play_state', {
+        eventId: playState.value.currentEventId,
+        playState: playState.value
+      })
+    }
   }
 
   const formattedCurrentTime = computed(() => formatTime(playState.value.currentTime))
