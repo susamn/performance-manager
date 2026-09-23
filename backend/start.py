@@ -34,8 +34,22 @@ def setup_venv():
 
     return python_path, backend_dir
 
-def start_server(port=5000):
+def start_server(port=5000, external=False):
     print("Setting up Performance Manager...")
+
+    if external:
+        import socket
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            display_ip = s.getsockname()[0]
+            s.close()
+        except Exception:
+            display_ip = "127.0.0.1"
+        bind_host = "0.0.0.0"
+    else:
+        display_ip = "127.0.0.1"
+        bind_host = "127.0.0.1"
 
     try:
         python_path, backend_dir = setup_venv()
@@ -60,7 +74,7 @@ def start_server(port=5000):
                 if port_file.exists():
                     with open(port_file, "r") as f:
                         current_port = f.read().strip()
-                    print(f"📍 Access at: http://127.0.0.1:{current_port}")
+                    print(f"📍 Access at: http://{display_ip}:{current_port}")
                 return
             except (OSError, ProcessLookupError):
                 # Process not running, clean up stale PID file
@@ -76,7 +90,7 @@ def start_server(port=5000):
 
         print("\n" + "="*60)
         print("🎵 Starting Performance Manager")
-        print(f"📍 Server: http://127.0.0.1:{port}")
+        print(f"📍 Server: http://{display_ip}:{port}")
         print("🎭 Cultural Events Performance Management System")
         print("📁 Config: " + str(config_dir))
         print("📝 Logs: " + str(log_file))
@@ -88,7 +102,7 @@ def start_server(port=5000):
         # Redirect output to log file
         with open(log_file, "w") as log:
             process = subprocess.Popen(
-                [str(python_path), "app.py", "--port", str(port)],
+                [str(python_path), "app.py", "--port", str(port), "--host", bind_host],
                 stdout=log,
                 stderr=subprocess.STDOUT,
                 cwd=backend_dir
@@ -99,7 +113,10 @@ def start_server(port=5000):
                 f.write(str(process.pid))
 
             print(f"✅ Performance Manager started successfully (PID: {process.pid})")
-            print(f"📍 Access at: http://127.0.0.1:{port}")
+            if external:
+                print(f"📍 Access at: http://{display_ip}:{port} (also available on localhost)")
+            else:
+                print(f"📍 Access at: http://{display_ip}:{port}")
             print(f"📝 Logs: tail -f {log_file}")
 
             # Wait for process to complete
@@ -123,6 +140,7 @@ def start_server(port=5000):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Start Performance Manager")
     parser.add_argument("--port", type=int, default=5000, help="Port to run the server on (default: 5000)")
+    parser.add_argument("--external", action="store_true", help="Host on 0.0.0.0 to allow LAN connections")
     args = parser.parse_args()
 
-    start_server(args.port)
+    start_server(args.port, args.external)

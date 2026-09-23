@@ -70,7 +70,7 @@ export const usePlayerStore = defineStore('player', () => {
         console.log('Track loaded successfully (streaming ready)')
       },
 
-      onloaderror: (id, error) => {
+      onloaderror: (id: number, error: unknown) => {
         isLoading.value = false
         console.error('Failed to load track:', error)
       },

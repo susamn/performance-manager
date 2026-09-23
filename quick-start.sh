@@ -105,12 +105,15 @@ start_app() {
     # Ensure config directory exists
     ensure_config_dir
 
-    # Parse port argument
+    # Parse port and external arguments
     local start_port="$PORT"
+    local external_flag=""
     for arg in "$@"; do
         if [[ "$arg" =~ ^[0-9]+$ ]]; then
             start_port="$arg"
             echo -e "${BLUE}🔧 Using specified port: $start_port${NC}"
+        elif [[ "$arg" == "--external" || "$arg" == "--external=true" ]]; then
+            external_flag="--external"
         fi
     done
 
@@ -134,11 +137,19 @@ start_app() {
     # Setup backend
     setup_backend
 
-    echo -e "${PURPLE}🎵 Starting Performance Manager on port $start_port...${NC}"
+    if [ -n "$external_flag" ]; then
+        echo -e "${PURPLE}🎵 Starting Performance Manager on port $start_port (External access enabled)...${NC}"
+    else
+        echo -e "${PURPLE}🎵 Starting Performance Manager on port $start_port (Localhost only)...${NC}"
+    fi
 
     # Start using Python start script
     cd "$PROJECT_DIR/backend"
-    python3 start.py --port "$start_port" &
+    if [ -n "$external_flag" ]; then
+        python3 start.py --port "$start_port" --external &
+    else
+        python3 start.py --port "$start_port" &
+    fi
     local start_pid=$!
 
     # Wait a moment and check if it started successfully
@@ -146,7 +157,11 @@ start_app() {
     if is_running; then
         local pid=$(cat "$PID_FILE")
         echo -e "${GREEN}✅ Performance Manager started successfully (PID: $pid)${NC}"
-        echo -e "${BLUE}📍 Access at: http://127.0.0.1:$start_port${NC}"
+        if [ -n "$external_flag" ]; then
+            echo -e "${BLUE}📍 Access at: http://127.0.0.1:$start_port (and LAN IP)${NC}"
+        else
+            echo -e "${BLUE}📍 Access at: http://127.0.0.1:$start_port${NC}"
+        fi
         echo -e "${PURPLE}🎭 Cultural Events Performance Management System${NC}"
         echo -e "${YELLOW}📝 Logs: $LOG_FILE${NC}"
         echo -e "${BLUE}📁 Config: $CONFIG_DIR${NC}"
