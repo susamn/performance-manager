@@ -21,6 +21,22 @@
 
           <!-- Header Actions -->
           <div class="flex items-center space-x-3">
+            <!-- Toggle Live Endpoint Button -->
+            <button
+              @click="toggleLiveEndpoint"
+              class="px-3 py-2 rounded-lg flex items-center space-x-2 transition-colors text-sm border font-medium"
+              :class="event?.liveEnabled !== false 
+                ? 'bg-green-600/20 text-green-400 border-green-500/50 hover:bg-green-600/30' 
+                : 'bg-red-600/20 text-red-400 border-red-500/50 hover:bg-red-600/30'"
+              :title="event?.liveEnabled !== false ? 'Live View Enabled - Click to Disable' : 'Live View Disabled - Click to Enable'"
+            >
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path v-if="event?.liveEnabled !== false" d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12A6,6 0 0,0 12,18A6,6 0 0,0 18,12A6,6 0 0,0 12,6M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8Z" />
+                <path v-else d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4C16.41,4 20,7.59 20,12C20,13.85 19.36,15.54 18.3,16.89L7.11,5.7C8.46,4.64 10.15,4 12,4M12,20C7.59,20 4,16.41 4,12C4,10.15 4.64,8.46 5.7,7.11L16.89,18.3C15.54,19.36 13.85,20 12,20Z" />
+              </svg>
+              <span class="hidden sm:inline">{{ event?.liveEnabled !== false ? 'Live: ON' : 'Live: OFF' }}</span>
+            </button>
+
             <!-- Open Live View Button -->
             <a
               :href="`/events/${eventId}/live`"
@@ -547,6 +563,20 @@ const formattedCurrentTime = computed(() => playerStore.formattedCurrentTime)
 const formattedDuration = computed(() => playerStore.formattedDuration)
 
 const eventId = route.params.eventId as string
+
+// Toggle Live Endpoint
+async function toggleLiveEndpoint() {
+  if (lockState.value === 'locked') return; // Must be at least in 'use' mode or unlocked
+  if (!event.value) return;
+  
+  const currentStatus = event.value.liveEnabled !== false; // Default is true
+  try {
+    await eventStore.updateEvent(eventId, { liveEnabled: !currentStatus });
+  } catch (error) {
+    console.error('Failed to toggle live endpoint:', error);
+  }
+}
+
 const performanceContainer = ref<HTMLElement>()
 const searchQuery = ref('')
 let sortable: Sortable | null = null

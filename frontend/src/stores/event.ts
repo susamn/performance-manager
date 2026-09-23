@@ -55,6 +55,29 @@ export const useEventStore = defineStore('event', () => {
     }
   }
 
+  async function updateEvent(eventId: string, updates: Partial<Event>) {
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+      if (!response.ok) throw new Error('Failed to update event')
+      const updatedEvent = await response.json()
+      const index = events.value.findIndex(e => e.id === eventId)
+      if (index !== -1) {
+        events.value[index] = updatedEvent
+      }
+      if (selectedEvent.value?.id === eventId) {
+        selectedEvent.value = { ...selectedEvent.value, ...updatedEvent }
+      }
+      return updatedEvent
+    } catch (error) {
+      console.error('Error updating event:', error)
+      throw error
+    }
+  }
+
   async function deleteEvent(eventId: string) {
     try {
       const response = await fetch(`/api/events/${eventId}`, { method: 'DELETE' })
@@ -204,6 +227,7 @@ export const useEventStore = defineStore('event', () => {
     sortedPerformances,
     loadEvents,
     createEvent,
+    updateEvent,
     deleteEvent,
     selectEvent,
     loadEventPerformances,

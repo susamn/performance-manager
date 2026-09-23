@@ -40,6 +40,7 @@ export interface Event {
   breaks: Break[]
   coverImage?: string | null
   imagePosition?: { x: number; y: number }
+  liveEnabled?: boolean
 }
 
 export interface PlayState {

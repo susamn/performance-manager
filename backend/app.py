@@ -27,10 +27,12 @@ active_live_states = {}
 
 def get_event_state(event_id):
     if event_id not in active_live_states:
+        event = em.get_event(event_id) if 'em' in globals() else None
         active_live_states[event_id] = {
             'eventId': event_id,
-            'eventName': None,
+            'eventName': event['name'] if event else None,
             'performance': None,
+            'liveEnabled': event['liveEnabled'] if event and 'liveEnabled' in event else True,
             'playState': {
                 'isPlaying': False,
                 'currentTime': 0,
@@ -38,6 +40,12 @@ def get_event_state(event_id):
                 'currentTrackId': None
             }
         }
+    else:
+        # ensure liveEnabled stays fresh on subsequent requests
+        event = em.get_event(event_id) if 'em' in globals() else None
+        if event:
+            active_live_states[event_id]['liveEnabled'] = event.get('liveEnabled', True)
+            
     return active_live_states[event_id]
 
 # Configuration
@@ -97,7 +105,8 @@ class EventManager:
             'performances': [],
             'breaks': [],
             'coverImage': None,
-            'imagePosition': {'x': 50, 'y': 50}  # Default center position as percentages
+            'imagePosition': {'x': 50, 'y': 50},  # Default center position as percentages
+            'liveEnabled': True  # Default to live view enabled
         }
 
         self.events.append(event)
@@ -478,6 +487,26 @@ def get_event(event_id: str):
     if event:
         return jsonify(event)
     return jsonify({'error': 'Event not found'}), 404
+
+@app.route('/api/events/<event_id>', methods=['PUT'])
+def update_event(event_id: str):
+    """Update an event"""
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    # Ensure we don't accidentally overwrite important inner arrays directly
+    allowed_updates = {k: v for k, v in data.items() if k in ['name', 'description', 'liveEnabled']}
+    
+    if allowed_updates:
+        event = em.update_event(event_id, allowed_updates)
+        if event:
+            # Emit live state change if liveEnabled changed
+            if 'liveEnabled' in allowed_updates:
+                socketio.emit('event_state_updated', {'eventId': event_id, 'liveEnabled': allowed_updates['liveEnabled']})
+            return jsonify(event)
+        
+    return jsonify({'error': 'Event not found or invalid updates'}), 404
 
 @app.route('/api/events/<event_id>', methods=['DELETE'])
 def delete_event(event_id: str):

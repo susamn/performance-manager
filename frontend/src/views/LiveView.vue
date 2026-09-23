@@ -1,8 +1,17 @@
 <template>
   <div class="min-h-screen bg-gray-900 text-white flex flex-col p-4 md:p-8">
     
+    <!-- Disabled State -->
+    <div v-if="!isLiveEnabled" class="flex-1 flex flex-col items-center justify-center text-center">
+      <div class="w-24 h-24 mb-6 text-red-500/50">
+        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4C16.41,4 20,7.59 20,12C20,13.85 19.36,15.54 18.3,16.89L7.11,5.7C8.46,4.64 10.15,4 12,4M12,20C7.59,20 4,16.41 4,12C4,10.15 4.64,8.46 5.7,7.11L16.89,18.3C15.54,19.36 13.85,20 12,20Z" /></svg>
+      </div>
+      <h1 class="text-3xl font-bold text-gray-400 mb-2">Live View Disabled</h1>
+      <p class="text-gray-500">The host has temporarily disabled the live view for this event.</p>
+    </div>
+
     <!-- No Event State -->
-    <div v-if="!activeEventId" class="flex-1 flex flex-col items-center justify-center text-center">
+    <div v-else-if="!activeEventId" class="flex-1 flex flex-col items-center justify-center text-center">
       <div class="w-24 h-24 mb-6 text-gray-700 animate-pulse">
         <svg fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z" /></svg>
       </div>
@@ -129,6 +138,7 @@ const props = defineProps<{
 const activePerformance = ref<Performance | null>(null)
 const eventName = ref<string>('')
 const activeEventId = ref<string>(props.eventId)
+const isLiveEnabled = ref(true)
 const playState = ref<PlayState>({
   isPlaying: false,
   currentTime: 0,
@@ -151,11 +161,20 @@ onMounted(() => {
     socket.emit('request_live_state', { eventId: props.eventId })
   })
 
+  socket.on('event_state_updated', (data: any) => {
+    if (data.eventId === props.eventId && data.liveEnabled !== undefined) {
+      isLiveEnabled.value = data.liveEnabled
+    }
+  })
+
   socket.on('active_live_state', (state: any) => {
     if (state.eventId === props.eventId) {
       activeEventId.value = state.eventId
       eventName.value = state.eventName
       activePerformance.value = state.performance
+      if (state.liveEnabled !== undefined) {
+        isLiveEnabled.value = state.liveEnabled
+      }
       if (state.playState) {
         playState.value = state.playState
       }
@@ -173,6 +192,7 @@ onUnmounted(() => {
   socket.off('connected')
   socket.off('active_live_state')
   socket.off('play_state_updated')
+  socket.off('event_state_updated')
 })
 
 function sendCommand(action: string) {
