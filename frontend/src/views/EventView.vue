@@ -572,6 +572,10 @@ async function toggleLiveEndpoint() {
   const currentStatus = event.value.liveEnabled !== false; // Default is true
   try {
     await eventStore.updateEvent(eventId, { liveEnabled: !currentStatus });
+    // Fix #3: Stop orphaned audio if live view is disabled
+    if (currentStatus === true) {
+      playerStore.stop();
+    }
   } catch (error) {
     console.error('Failed to toggle live endpoint:', error);
   }
