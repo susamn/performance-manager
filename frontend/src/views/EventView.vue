@@ -308,15 +308,14 @@
 
           <!-- Performances Section (Fixed Height) -->
           <div class="flex-1 flex flex-col min-h-0">
-            <div class="mb-4">
-              <h2 class="text-xl font-semibold text-white mb-3">Performances</h2>
+            <div class="mb-3">
               <!-- Search Box -->
               <div class="relative">
                 <input
                   v-model="searchQuery"
                   type="text"
                   placeholder="Search performances, performers, types..."
-                  class="w-full px-4 py-2 pl-10 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-player-accent text-white placeholder-gray-400"
+                  class="w-full px-3 py-1.5 pl-9 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-player-accent text-white placeholder-gray-400 text-sm shadow-inner"
                 />
                 <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
@@ -325,9 +324,9 @@
                 <button
                   v-if="searchQuery"
                   @click="searchQuery = ''"
-                  class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                  class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors p-1"
                 >
-                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
                   </svg>
                 </button>
@@ -360,7 +359,7 @@
               <div class="h-full overflow-y-auto pr-2 pb-6">
                 <!-- Active Performances Section -->
                 <div v-if="sortedItems.active.length > 0">
-                  <h3 class="text-lg font-semibold text-white mb-3 sticky top-0 bg-gray-900 py-2 z-10">
+                  <h3 class="text-xs uppercase tracking-wider font-semibold text-gray-400 mb-2 sticky top-0 bg-gray-900 py-1.5 z-10">
                     Performances
                   </h3>
                   <div ref="performanceContainer" class="space-y-3">
@@ -395,8 +394,8 @@
                 </div>
 
                 <!-- Completed Section -->
-                <div v-if="sortedItems.completed.length > 0" class="mt-8">
-                  <h3 class="text-lg font-semibold text-gray-400 mb-3 sticky top-0 bg-gray-900 py-2 z-10">
+                <div v-if="sortedItems.completed.length > 0" class="mt-6">
+                  <h3 class="text-xs uppercase tracking-wider font-semibold text-gray-500 mb-2 sticky top-0 bg-gray-900 py-1.5 z-10">
                     Completed
                   </h3>
                   <div ref="completedContainer" class="space-y-3">
