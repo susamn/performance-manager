@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import EventView from '../views/EventView.vue'
+import LiveView from '../views/LiveView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -15,6 +16,11 @@ const router = createRouter({
       name: 'event',
       component: EventView,
       props: true
+    },
+    {
+      path: '/live',
+      name: 'live',
+      component: LiveView
     }
   ]
 })

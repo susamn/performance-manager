@@ -13,12 +13,27 @@ logging.basicConfig(level=logging.INFO)
 
 from flask import Flask, request, jsonify, send_file, Response
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit
 from werkzeug.utils import secure_filename
 import magic
 from mutagen import File as MutagenFile
 
 app = Flask(__name__)
 CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Global state for Live View
+active_live_state = {
+    'eventId': None,
+    'eventName': None,
+    'performance': None,
+    'playState': {
+        'isPlaying': False,
+        'currentTime': 0,
+        'duration': 0,
+        'currentTrackId': None
+    }
+}
 
 # Configuration
 CONFIG_DIR = Path.home() / '.config' / 'performance-manager'
@@ -1015,6 +1030,40 @@ def serve_static(path):
         return send_file(file_path)
     return serve_frontend()  # Fallback to index.html for SPA routing
 
+# --- WebSockets ---
+@socketio.on('connect')
+def handle_connect():
+    """Send current state to newly connected client"""
+    emit('active_live_state', active_live_state)
+
+@socketio.on('admin_set_active_performance')
+def handle_admin_set_active_performance(data):
+    """Admin has selected a new active performance"""
+    active_live_state['eventId'] = data.get('eventId')
+    active_live_state['eventName'] = data.get('eventName')
+    active_live_state['performance'] = data.get('performance')
+    
+    # Reset play state when performance changes
+    active_live_state['playState'] = {
+        'isPlaying': False,
+        'currentTime': 0,
+        'duration': 0,
+        'currentTrackId': None
+    }
+    emit('active_live_state', active_live_state, broadcast=True)
+
+@socketio.on('admin_update_play_state')
+def handle_admin_update_play_state(data):
+    """Admin player state updated (play/pause/seek)"""
+    active_live_state['playState'] = data
+    emit('play_state_updated', active_live_state['playState'], broadcast=True)
+
+@socketio.on('performer_send_command')
+def handle_performer_send_command(data):
+    """Performer sent a command (play, pause, stop, etc.)"""
+    # Just forward this command to all clients (including admin)
+    emit('admin_receive_command', data, broadcast=True)
+
 if __name__ == '__main__':
     import argparse
 
@@ -1027,6 +1076,6 @@ if __name__ == '__main__':
     print(f"Performance Manager starting...")
     print(f"Config directory: {CONFIG_DIR}")
     print(f"Serving frontend from: {Path(__file__).parent.parent / 'frontend' / 'dist'}")
-    print(f"Server will run on {args.host}:{args.port}")
+    print(f"Server will run on {args.host}:{args.port} with SocketIO")
 
-    app.run(host=args.host, port=args.port, debug=args.debug)
+    socketio.run(app, host=args.host, port=args.port, debug=args.debug)
