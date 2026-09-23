@@ -102,6 +102,57 @@
       <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <!-- Left Sidebar - Add Performance Form -->
         <div class="lg:col-span-1 space-y-6">
+          <!-- Event Image Container -->
+          <div
+            class="border border-player-accent/30 rounded-lg relative overflow-hidden cover-image-container w-full aspect-square shadow-xl"
+            :class="[
+              event?.coverImage ? 'bg-cover bg-center cover-image-glow' : 'bg-gradient-to-br from-gray-800 to-gray-900'
+            ]"
+            :style="event?.coverImage ? {
+              backgroundImage: `url(${coverImageUrl})`,
+              backgroundPosition: `${event.imagePosition?.x || 50}% ${event.imagePosition?.y || 50}%`
+            } : {}"
+            @mouseenter="lockState === 'unlocked' && event?.coverImage ? showPositionButton = true : null"
+            @mouseleave="lockState === 'unlocked' && event?.coverImage ? showPositionButton = false : null"
+          >
+            <div v-if="event?.coverImage" class="diagonal-shine"></div>
+
+            <div class="h-full flex flex-col justify-center text-center relative">
+              <button
+                v-if="event?.coverImage && showPositionButton && !isPositioning"
+                @click="startPositioning"
+                class="absolute bottom-4 right-4 bg-black/70 hover:bg-black/80 text-white px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 backdrop-blur-sm border border-white/20 z-10 shadow-lg shadow-black/50"
+              >
+                🎨 Position
+              </button>
+
+              <div v-if="isPositioning" class="absolute inset-0 bg-black/60 flex items-center justify-center z-20 rounded-lg backdrop-blur-sm">
+                <div class="text-center text-white p-4">
+                  <p class="text-lg font-medium mb-2">Position</p>
+                  <p class="text-sm text-gray-300 mb-4">Click to set focal point</p>
+                  <button
+                    @click="finishPositioning"
+                    class="bg-player-accent hover:bg-green-400 text-black px-6 py-2 rounded-lg font-medium transition-colors shadow-lg shadow-player-accent/20"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+
+              <div
+                v-if="isPositioning"
+                @click="handleImageClick"
+                class="absolute inset-0 cursor-crosshair z-10"
+              ></div>
+
+              <div v-if="!event?.coverImage" class="px-4">
+                <svg class="w-16 h-16 text-gray-600 mx-auto mb-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19,19H5V5H19M19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3M13.96,12.29L11.21,15.83L9.25,13.47L6.5,17H17.5L13.96,12.29Z" /></svg>
+                <p class="text-gray-500 text-lg mb-2">Event Image</p>
+                <p class="text-gray-700 text-xs mt-4">Add a cover image when creating events</p>
+              </div>
+            </div>
+          </div>
+
           <div :class="{ 'pointer-events-none opacity-50': lockState !== 'unlocked' }">
             <AddPerformanceForm
               :event-id="eventId"
@@ -162,252 +213,97 @@
 
         <!-- Main Performance Cards -->
         <div class="lg:col-span-2 flex flex-col h-[calc(100vh-120px)]">
-          <!-- Completion Rate Progress Ring -->
-          <div class="mb-3 bg-gradient-to-r from-gray-800 to-gray-700 border border-player-accent/30 rounded-lg p-3">
-            <div class="flex items-center justify-between">
-              <div class="flex-1">
-                <h3 class="text-xs font-semibold text-gray-300">Event Progress</h3>
-                <p class="text-[10px] text-gray-400">
-                  {{ completedPerformancesCount }} of {{ totalPerformancesCount }} completed
+          <!-- Unified Event Progress & Performance Info Card -->
+          <div class="mb-4 bg-gradient-to-r from-gray-800 to-gray-700 border border-player-accent/30 rounded-lg p-4">
+            
+            <!-- Top Section: Event Progress and Performance Selection -->
+            <div class="flex items-start justify-between">
+              
+              <!-- Left: Performance Info (if selected) or Event Summary (if none selected) -->
+              <div class="flex-1 mr-4">
+                <template v-if="selectedPerformance">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold rounded bg-player-accent/20 text-player-accent">{{ selectedPerformance.type }}</span>
+                    <span :class="selectedPerformance.isDone ? 'text-green-400' : 'text-yellow-400'" class="text-[10px] uppercase tracking-wider font-bold">
+                      {{ selectedPerformance.isDone ? 'Completed' : 'Pending' }}
+                    </span>
+                  </div>
+                  <h3 class="text-lg font-bold text-white leading-tight truncate">{{ selectedPerformance.name }}</h3>
+                  <p class="text-sm text-gray-400 mb-2 truncate">by <span class="text-gray-300">{{ selectedPerformance.performer }}</span></p>
+                  
+                  <div class="flex items-center gap-4 text-xs">
+                    <div class="flex flex-col">
+                      <span class="text-gray-500">Tracks</span>
+                      <span class="font-medium" :class="selectedPerformance.tracks.length > 0 ? 'text-white' : 'text-gray-500'">
+                        {{ selectedPerformance.tracks.filter(t => t.isCompleted).length }} / {{ selectedPerformance.tracks.length }}
+                      </span>
+                    </div>
+                    <div v-if="selectedPerformance.expectedDuration" class="flex flex-col">
+                      <span class="text-gray-500">Duration</span>
+                      <span class="font-medium text-white">{{ formatDuration(selectedPerformance.expectedDuration) }}</span>
+                    </div>
+                  </div>
+                </template>
+                
+                <template v-else>
+                  <h3 class="text-lg font-bold text-white mb-1">Event Overview</h3>
+                  <p class="text-sm text-gray-400 mb-2">Select a performance from the list below to view its details.</p>
+                  
+                  <div v-if="totalDuration > 0 || totalResolvedDuration > 0" class="flex flex-col gap-1 text-xs">
+                    <div v-if="totalDuration > 0" class="flex items-center gap-3">
+                      <span class="text-gray-500">Expected Time:</span>
+                      <span class="text-white">{{ formatDuration(completedDuration) }} / {{ formatDuration(totalDuration) }}</span>
+                    </div>
+                    <div v-if="totalResolvedDuration > 0" class="flex items-center gap-3">
+                      <span class="text-gray-500">Resolved Time:</span>
+                      <span class="text-blue-300">{{ formatResolvedDuration(completedResolvedDuration) }} / {{ formatResolvedDuration(totalResolvedDuration) }}</span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+
+              <!-- Right: Event Progress Ring -->
+              <div class="flex flex-col items-center justify-center border-l border-gray-600 pl-4">
+                <div class="relative w-16 h-16 mb-1">
+                  <!-- Background circle -->
+                  <svg class="w-16 h-16 transform -rotate-90">
+                    <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="4" fill="none" class="text-gray-700" />
+                    <!-- Progress circle -->
+                    <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="4" fill="none"
+                      :stroke-dasharray="2 * Math.PI * 28"
+                      :stroke-dashoffset="(2 * Math.PI * 28) - ((completionPercentage / 100) * (2 * Math.PI * 28))"
+                      class="text-player-accent transition-all duration-500" stroke-linecap="round" />
+                  </svg>
+                  <!-- Percentage text -->
+                  <div class="absolute inset-0 flex items-center justify-center">
+                    <span class="text-sm font-bold text-player-accent">{{ completionPercentage }}%</span>
+                  </div>
+                </div>
+                <p class="text-[10px] text-gray-400 text-center whitespace-nowrap">
+                  {{ completedPerformancesCount }} of {{ totalPerformancesCount }} Done
                 </p>
               </div>
-              <div class="relative w-14 h-14">
-                <!-- Background circle -->
-                <svg class="w-14 h-14 transform -rotate-90">
-                  <circle
-                    cx="28"
-                    cy="28"
-                    r="24"
-                    stroke="currentColor"
-                    stroke-width="4"
-                    fill="none"
-                    class="text-gray-700"
-                  />
-                  <!-- Progress circle -->
-                  <circle
-                    cx="28"
-                    cy="28"
-                    r="24"
-                    stroke="currentColor"
-                    stroke-width="4"
-                    fill="none"
-                    :stroke-dasharray="circumference"
-                    :stroke-dashoffset="progressOffset"
-                    class="text-player-accent transition-all duration-500"
-                    stroke-linecap="round"
-                  />
+            </div>
+
+            <!-- Bottom Section: Currently Playing Track Indicator (Only shows if a track from the selected performance is playing) -->
+            <div v-if="selectedPerformance && playerStore.currentTrack && selectedPerformance.tracks.some(t => t.id === playerStore.currentTrack?.id)" 
+                 class="mt-4 pt-3 border-t border-gray-600 flex items-center gap-3">
+              <div class="w-8 h-8 bg-player-accent/20 rounded-full flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4 text-player-accent" :class="{ 'animate-pulse': playState.isPlaying }" fill="currentColor" viewBox="0 0 24 24">
+                  <path v-if="playState.isPlaying" d="M8,5.14V19.14L19,12.14L8,5.14Z" />
+                  <path v-else d="M8,5V19L11,19V5M13,5V19L16,19V5" />
                 </svg>
-                <!-- Percentage text -->
-                <div class="absolute inset-0 flex items-center justify-center">
-                  <span class="text-sm font-bold text-player-accent">{{ completionPercentage }}%</span>
-                </div>
               </div>
-            </div>
-          </div>
-
-          <!-- Performance Info Card (Always Visible) -->
-          <div
-            class="mb-6 border border-player-accent/30 rounded-lg p-6 relative overflow-hidden cover-image-container h-[408px]"
-            :class="[
-              !selectedPerformance && event?.coverImage ? 'bg-cover bg-center cover-image-glow' : 'bg-gradient-to-r from-gray-800 to-gray-700'
-            ]"
-            :style="!selectedPerformance && event?.coverImage ? {
-              backgroundImage: `url(${coverImageUrl})`,
-              backgroundPosition: `${event.imagePosition?.x || 50}% ${event.imagePosition?.y || 50}%`
-            } : {}"
-            @mouseenter="lockState === 'unlocked' && !selectedPerformance && event?.coverImage ? showPositionButton = true : null"
-            @mouseleave="lockState === 'unlocked' && !selectedPerformance && event?.coverImage ? showPositionButton = false : null"
-          >
-            <!-- Diagonal shine effect overlay (only when cover image exists) -->
-            <div v-if="!selectedPerformance && event?.coverImage" class="diagonal-shine"></div>
-            <!-- When a performance is selected -->
-            <div v-if="selectedPerformance">
-              <div class="flex items-start justify-between mb-4">
-                <div class="flex-1">
-                  <h3 class="text-xl font-bold text-white mb-2">{{ selectedPerformance.name }}</h3>
-                  <p class="text-lg text-gray-300 mb-3">by {{ selectedPerformance.performer }}</p>
-                  <div class="flex flex-wrap gap-4 text-sm">
-                    <div class="flex items-center gap-2">
-                      <span class="text-gray-400">Type:</span>
-                      <span class="px-2 py-1 bg-blue-600/20 text-blue-300 rounded">{{ selectedPerformance.type }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-gray-400">Mode:</span>
-                      <span class="px-2 py-1 bg-purple-600/20 text-purple-300 rounded">{{ selectedPerformance.mode }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-gray-400">Status:</span>
-                      <span :class="selectedPerformance.isDone ? 'px-2 py-1 bg-green-600/20 text-green-300 rounded' : 'px-2 py-1 bg-yellow-600/20 text-yellow-300 rounded'">
-                        {{ selectedPerformance.isDone ? 'Completed' : 'Pending' }}
-                      </span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-gray-400">Tracks:</span>
-                      <span class="px-2 py-1 bg-gray-600/50 text-gray-300 rounded">
-                        {{ selectedPerformance.tracks.length === 0 ? 'No tracks' : selectedPerformance.tracks.length }}
-                      </span>
-                    </div>
-                    <div v-if="selectedPerformance.expectedDuration" class="flex items-center gap-2">
-                      <span class="text-gray-400">Duration:</span>
-                      <span class="px-2 py-1 bg-blue-600/20 text-blue-300 rounded">
-                        {{ formatDuration(selectedPerformance.expectedDuration) }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div class="text-right">
-                  <p class="text-xs text-gray-400 mb-2">Created</p>
-                  <p class="text-sm text-gray-300">{{ formatDate(selectedPerformance.createdAt) }}</p>
-                </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Now Playing</p>
+                <p class="text-sm font-medium text-white truncate">{{ playerStore.currentTrack.filename }}</p>
               </div>
-
-              <!-- Track Summary for Selected Performance (non-interactive, just counts) -->
-              <div v-if="selectedPerformance.tracks.length > 0" class="border-t border-gray-600 pt-4 pb-8">
-                <h4 class="text-sm font-medium text-gray-400 mb-3">Track Summary</h4>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div class="text-center p-3 bg-gray-700/30 rounded">
-                    <p class="text-lg font-semibold text-white">{{ selectedPerformance.tracks.length }}</p>
-                    <p class="text-xs text-gray-400">Total Tracks</p>
-                  </div>
-                  <div class="text-center p-3 bg-green-600/20 rounded">
-                    <p class="text-lg font-semibold text-green-300">{{ selectedPerformance.tracks.filter(t => t.isCompleted).length }}</p>
-                    <p class="text-xs text-gray-400">Completed</p>
-                  </div>
-                  <div class="text-center p-3 bg-yellow-600/20 rounded">
-                    <p class="text-lg font-semibold text-yellow-300">{{ selectedPerformance.tracks.filter(t => !t.isCompleted).length }}</p>
-                    <p class="text-xs text-gray-400">Remaining</p>
-                  </div>
-                  <div class="text-center p-3 bg-purple-600/20 rounded">
-                    <p class="text-lg font-semibold text-purple-300">{{ Math.round((selectedPerformance.tracks.filter(t => t.isCompleted).length / selectedPerformance.tracks.length) * 100) }}%</p>
-                    <p class="text-xs text-gray-400">Progress</p>
-                  </div>
-                </div>
-
-                <!-- Currently Playing Track -->
-                <div v-if="playerStore.currentTrack && selectedPerformance.tracks.some(t => t.id === playerStore.currentTrack?.id)" class="mt-4 p-3 bg-player-accent/10 border border-player-accent/30 rounded">
-                  <div class="flex items-center gap-3">
-                    <div class="flex-shrink-0">
-                      <div class="w-10 h-10 bg-player-accent/20 rounded-full flex items-center justify-center">
-                        <svg class="w-5 h-5 text-player-accent" :class="{ 'animate-pulse': playState.isPlaying }" fill="currentColor" viewBox="0 0 24 24">
-                          <path v-if="playState.isPlaying" d="M8,5.14V19.14L19,12.14L8,5.14Z" />
-                          <path v-else d="M8,5V19L11,19V5M13,5V19L16,19V5" />
-                        </svg>
-                      </div>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <p class="text-xs text-gray-400 mb-1">Now Playing</p>
-                      <p class="text-sm font-medium text-white truncate">{{ playerStore.currentTrack.filename }}</p>
-                    </div>
-                    <div class="flex-shrink-0 text-right">
-                      <p class="text-sm text-player-accent font-mono">{{ formattedCurrentTime }}</p>
-                      <p class="text-xs text-gray-400 font-mono">{{ formattedDuration }}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div v-else class="border-t border-gray-600 pt-4 pb-8 text-center">
-                <p class="text-gray-500 text-sm">No tracks available for this performance</p>
+              <div class="text-right shrink-0">
+                <p class="text-xs text-player-accent font-mono font-medium">{{ formattedCurrentTime }}</p>
+                <p class="text-[10px] text-gray-500 font-mono">{{ formattedDuration }}</p>
               </div>
             </div>
 
-            <!-- When no performance is selected - show event overview -->
-            <div v-else class="h-full flex flex-col justify-center text-center relative">
-              <!-- Position Button (appears on hover when cover image exists) -->
-              <button
-                v-if="event?.coverImage && showPositionButton && !isPositioning"
-                @click="startPositioning"
-                class="absolute bottom-4 right-4 bg-black/70 hover:bg-black/80 text-white px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 backdrop-blur-sm border border-white/20 z-10"
-              >
-                🎨 Position Image
-              </button>
-
-              <!-- Positioning Mode Overlay -->
-              <div v-if="isPositioning" class="absolute inset-0 bg-black/50 flex items-center justify-center z-20 rounded-lg">
-                <div class="text-center text-white">
-                  <p class="text-lg font-medium mb-2">Click to position image</p>
-                  <p class="text-sm text-gray-300 mb-4">Click anywhere to set the focal point</p>
-                  <button
-                    @click="finishPositioning"
-                    class="bg-player-accent hover:bg-green-400 text-black px-4 py-2 rounded-lg font-medium transition-colors"
-                  >
-                    Done
-                  </button>
-                </div>
-              </div>
-
-              <!-- Click handler for positioning -->
-              <div
-                v-if="isPositioning"
-                @click="handleImageClick"
-                class="absolute inset-0 cursor-crosshair z-10"
-              ></div>
-
-              <!-- Content overlay for when there's a cover image -->
-              <div v-if="event?.coverImage" class="relative z-10">
-                <!-- Just empty space to allow the background image to show -->
-              </div>
-
-              <!-- Fallback when no cover image -->
-              <div v-else>
-                <p class="text-gray-500 text-lg mb-2">Event Overview</p>
-                <p class="text-gray-600 text-sm">Select a performance card to view details</p>
-                <p class="text-gray-700 text-xs mt-4">Add a cover image when creating events</p>
-              </div>
-            </div>
-
-            <!-- Duration Overlay Banner (Always Visible) -->
-            <div class="absolute bottom-0 left-0 right-0 bg-black/50 backdrop-blur-sm border-t border-gray-600 rounded-b-lg px-6 py-3">
-              <!-- Expected Duration (Manually Entered) -->
-              <div v-if="totalDuration > 0" class="mb-2">
-                <div class="flex justify-between items-center">
-                  <div class="flex items-center gap-6 text-sm">
-                    <div class="flex items-center gap-2">
-                      <span class="text-gray-400">Total:</span>
-                      <span class="text-white font-medium">{{ formatDuration(totalDuration) }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-gray-400">Completed:</span>
-                      <span class="text-green-300 font-medium">{{ formatDuration(completedDuration) }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-gray-400">Remaining:</span>
-                      <span class="text-yellow-300 font-medium">{{ formatDuration(remainingDuration) }}</span>
-                    </div>
-                  </div>
-                  <div class="text-xs text-gray-500">
-                    {{ Math.round((completedDuration / totalDuration) * 100) }}% complete
-                  </div>
-                </div>
-              </div>
-
-              <!-- Resolved Duration (From Track Durations) -->
-              <div v-if="totalResolvedDuration > 0" class="border-t border-gray-700 pt-2">
-                <div class="flex justify-between items-center">
-                  <div class="flex items-center gap-6 text-xs">
-                    <div class="flex items-center gap-2">
-                      <span class="text-gray-500">Resolved Total:</span>
-                      <span class="text-blue-300 font-medium">{{ formatResolvedDuration(totalResolvedDuration) }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-gray-500">Resolved Completed:</span>
-                      <span class="text-blue-200 font-medium">{{ formatResolvedDuration(completedResolvedDuration) }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-gray-500">Resolved Remaining:</span>
-                      <span class="text-blue-100 font-medium">{{ formatResolvedDuration(remainingResolvedDuration) }}</span>
-                    </div>
-                  </div>
-                  <div class="text-xs text-gray-600">
-                    {{ Math.round((completedResolvedDuration / totalResolvedDuration) * 100) }}% done
-                  </div>
-                </div>
-              </div>
-
-              <div v-if="totalDuration === 0 && totalResolvedDuration === 0" class="text-center text-gray-500 text-sm">
-                No durations set - Add expected durations or upload tracks
-              </div>
-            </div>
           </div>
 
           <!-- Performances Section (Fixed Height) -->
