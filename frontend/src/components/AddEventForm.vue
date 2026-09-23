@@ -97,6 +97,7 @@
 </template>
 
 <script setup lang="ts">
+import { useEventStore } from '@/stores/event'
 import { ref } from 'vue'
 import type { Event } from '@/types'
 

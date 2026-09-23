@@ -62,6 +62,7 @@
 </template>
 
 <script setup lang="ts">
+import { useEventStore } from '@/stores/event'
 import { ref } from 'vue'
 
 const props = defineProps<{
@@ -112,7 +113,8 @@ async function uploadTrackFile(file: File, performer: string) {
 
   const response = await fetch(`/api/events/${props.eventId}/performances/${props.performanceId}/upload`, {
     method: 'POST',
-    body: formData,
+        headers: useEventStore().getAuthHeaders(props.eventId, true),
+        body: formData,
   })
 
   if (!response.ok) {

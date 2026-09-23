@@ -68,6 +68,7 @@
 </template>
 
 <script setup lang="ts">
+import { useEventStore } from '@/stores/event'
 import { ref } from 'vue'
 import type { Break } from '@/types'
 
@@ -97,9 +98,7 @@ async function handleSubmit() {
   try {
     const response = await fetch(`/api/events/${props.eventId}/breaks`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: useEventStore().getAuthHeaders(props.eventId),
       body: JSON.stringify({
         name: breakName.value.trim(),
         type: breakType.value,

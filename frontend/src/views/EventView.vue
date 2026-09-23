@@ -632,13 +632,16 @@ async function verifyUnlockCode() {
   try {
     const response = await fetch(`/api/events/${eventId}/verify-unlock`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: useEventStore().getAuthHeaders(eventId),
       body: JSON.stringify({ unlockCode: unlockCodeInput.value.trim() })
     })
 
     if (response.ok) {
+      const data = await response.json()
+      if (data.token) {
+        eventStore.setEventToken(eventId, data.token)
+      }
+      
       if (lockState.value === 'locked') {
         // From locked -> use mode
         lockState.value = 'use'
@@ -984,7 +987,7 @@ async function onPerformanceCreated(performance: Performance) {
   try {
     const response = await fetch(`/api/events/${eventId}/performances/${performance.id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: useEventStore().getAuthHeaders(eventId),
       body: JSON.stringify({ order: maxOrder + 1 })
     })
 
@@ -1030,7 +1033,7 @@ async function toggleDone(performance: Performance) {
     try {
       await fetch(`/api/events/${eventId}/performances/${performance.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: useEventStore().getAuthHeaders(eventId),
         body: JSON.stringify({
           isDone: false,
           order: minOrder - 1
@@ -1094,7 +1097,7 @@ async function toggleTrackCompletion(track: Track) {
   try {
     const response = await fetch(`/api/events/${eventId}/performances/${selectedPerformanceId.value}/tracks/${track.id}/completion`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: useEventStore().getAuthHeaders(eventId),
       body: JSON.stringify({ isCompleted: !track.isCompleted })
     })
 
@@ -1117,7 +1120,8 @@ async function deleteTrack(track: Track) {
 
   try {
     const response = await fetch(`/api/events/${eventId}/performances/${selectedPerformanceId.value}/tracks/${track.id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+        headers: useEventStore().getAuthHeaders(eventId)
     })
 
     if (!response.ok) throw new Error('Failed to delete track')
@@ -1168,7 +1172,7 @@ async function handleImageClick(event: MouseEvent) {
   try {
     const response = await fetch(`/api/events/${eventId}/position`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: useEventStore().getAuthHeaders(eventId),
       body: JSON.stringify({ x, y })
     })
 

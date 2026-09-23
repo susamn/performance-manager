@@ -130,6 +130,7 @@
 </template>
 
 <script setup lang="ts">
+import { useEventStore } from '@/stores/event'
 import { ref, watch } from 'vue'
 import type { Performance, Track } from '@/types'
 
@@ -211,7 +212,7 @@ async function handleSubmit() {
     // 1. Update performance basic info
     const updateResponse = await fetch(`/api/events/${props.eventId}/performances/${props.performance.id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: useEventStore().getAuthHeaders(props.eventId),
       body: JSON.stringify({
         name: editedName.value.trim(),
         performer: editedPerformer.value.trim()
@@ -230,12 +231,14 @@ async function handleSubmit() {
 
       // Delete old track first
       await fetch(`/api/events/${props.eventId}/performances/${props.performance.id}/tracks/${trackId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: useEventStore().getAuthHeaders(props.eventId)
       })
 
       // Upload new track
       await fetch(`/api/events/${props.eventId}/performances/${props.performance.id}/upload`, {
         method: 'POST',
+        headers: useEventStore().getAuthHeaders(props.eventId, true),
         body: formData
       })
     }
@@ -243,7 +246,8 @@ async function handleSubmit() {
     // 3. Handle track removals
     for (const trackId of tracksToRemove.value) {
       await fetch(`/api/events/${props.eventId}/performances/${props.performance.id}/tracks/${trackId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: useEventStore().getAuthHeaders(props.eventId)
       })
     }
 
@@ -257,6 +261,7 @@ async function handleSubmit() {
 
       await fetch(`/api/events/${props.eventId}/performances/${props.performance.id}/tracks`, {
         method: 'POST',
+        headers: useEventStore().getAuthHeaders(props.eventId, true),
         body: formData
       })
     }

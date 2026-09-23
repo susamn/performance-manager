@@ -8,6 +8,20 @@ export const useEventStore = defineStore('event', () => {
   const eventPerformances = ref<Performance[]>([])
   const selectedPerformanceId = ref<string | null>(null)
   const isLoading = ref(false)
+  const eventTokens = ref<Record<string, string>>({})
+
+  function setEventToken(eventId: string, token: string) {
+    eventTokens.value[eventId] = token
+  }
+
+  function getAuthHeaders(eventId: string, isFormData = false) {
+    const headers: Record<string, string> = {}
+    if (!isFormData) headers['Content-Type'] = 'application/json'
+    if (eventTokens.value[eventId]) {
+      headers['Authorization'] = `Bearer ${eventTokens.value[eventId]}`
+    }
+    return headers
+  }
 
   const sortedEvents = computed(() => {
     return [...events.value].sort((a, b) =>
@@ -48,6 +62,7 @@ export const useEventStore = defineStore('event', () => {
       if (!response.ok) throw new Error('Failed to create event')
       const event = await response.json()
       events.value.push(event)
+      if (event.token) setEventToken(event.id, event.token)
       return event
     } catch (error) {
       console.error('Error creating event:', error)
@@ -59,9 +74,10 @@ export const useEventStore = defineStore('event', () => {
     try {
       const response = await fetch(`/api/events/${eventId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(eventId),
         body: JSON.stringify(updates),
       })
+      if (response.status === 401) throw new Error('Unauthorized')
       if (!response.ok) throw new Error('Failed to update event')
       const updatedEvent = await response.json()
       const index = events.value.findIndex(e => e.id === eventId)
@@ -80,7 +96,9 @@ export const useEventStore = defineStore('event', () => {
 
   async function deleteEvent(eventId: string) {
     try {
-      const response = await fetch(`/api/events/${eventId}`, { method: 'DELETE' })
+      const response = await fetch(`/api/events/${eventId}`, { method: 'DELETE',
+        headers: getAuthHeaders(eventId),
+      })
       if (!response.ok) throw new Error('Failed to delete event')
       events.value = events.value.filter(e => e.id !== eventId)
       if (selectedEvent.value?.id === eventId) {
@@ -122,7 +140,7 @@ export const useEventStore = defineStore('event', () => {
     try {
       const response = await fetch(`/api/events/${eventId}/performances`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(eventId),
         body: JSON.stringify({ name, performer }),
       })
       if (!response.ok) throw new Error('Failed to create performance')
@@ -139,7 +157,7 @@ export const useEventStore = defineStore('event', () => {
     try {
       const response = await fetch(`/api/events/${eventId}/performances/${performanceId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(eventId),
         body: JSON.stringify(updates),
       })
       if (!response.ok) throw new Error('Failed to update performance')
@@ -159,6 +177,7 @@ export const useEventStore = defineStore('event', () => {
     try {
       const response = await fetch(`/api/events/${eventId}/performances/${performanceId}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(eventId),
       })
       if (!response.ok) throw new Error('Failed to delete performance')
       eventPerformances.value = eventPerformances.value.filter(p => p.id !== performanceId)
@@ -175,7 +194,7 @@ export const useEventStore = defineStore('event', () => {
     try {
       const response = await fetch(`/api/events/${eventId}/performances/reorder`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(eventId),
         body: JSON.stringify({ order: newOrder }),
       })
       if (!response.ok) throw new Error('Failed to reorder performances')
@@ -238,5 +257,7 @@ export const useEventStore = defineStore('event', () => {
     togglePerformanceDone,
     selectPerformance,
     clearSelection,
+    setEventToken,
+    getAuthHeaders,
   }
 })

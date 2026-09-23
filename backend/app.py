@@ -11,16 +11,49 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-from flask import Flask, request, jsonify, send_file, Response
+from flask import Flask, request, jsonify, send_file, Response, current_app
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 from werkzeug.utils import secure_filename
 import magic
 from mutagen import File as MutagenFile
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+from functools import wraps
+import secrets
 
 app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Secret key for signing tokens (regenerated on server restart)
+app.secret_key = secrets.token_hex(32)
+
+def generate_auth_token(event_id: str) -> str:
+    s = URLSafeTimedSerializer(current_app.secret_key)
+    return s.dumps({'event_id': event_id})
+
+def verify_auth_token(token: str, expected_event_id: str) -> bool:
+    s = URLSafeTimedSerializer(current_app.secret_key)
+    try:
+        # Token valid for 24 hours
+        data = s.loads(token, max_age=86400)
+    except (SignatureExpired, BadSignature):
+        return False
+    return data.get('event_id') == expected_event_id
+
+def require_auth(f):
+    @wraps(f)
+    def decorated_function(event_id, *args, **kwargs):
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({'error': 'Missing or invalid authorization token'}), 401
+        
+        token = auth_header.split(' ')[1]
+        if not verify_auth_token(token, event_id):
+            return jsonify({'error': 'Unauthorized or expired token'}), 401
+            
+        return f(event_id, *args, **kwargs)
+    return decorated_function
 
 # Global state for Live View (per event)
 active_live_states = {}
@@ -470,7 +503,8 @@ def create_event():
                 if cover_filename:
                     event['coverImage'] = cover_filename
 
-        return jsonify(event), 201
+        token = generate_auth_token(event['id'])
+        return jsonify({**event, 'token': token}), 201
     else:
         # Handle JSON data (for backward compatibility)
         data = request.get_json()
@@ -478,7 +512,8 @@ def create_event():
             return jsonify({'error': 'Name is required'}), 400
 
         event = em.create_event(data['name'], data.get('description', ''), data.get('unlockCode', '12345'))
-        return jsonify(event), 201
+        token = generate_auth_token(event['id'])
+        return jsonify({**event, 'token': token}), 201
 
 @app.route('/api/events/<event_id>', methods=['GET'])
 def get_event(event_id: str):
@@ -489,6 +524,7 @@ def get_event(event_id: str):
     return jsonify({'error': 'Event not found'}), 404
 
 @app.route('/api/events/<event_id>', methods=['PUT'])
+@require_auth
 def update_event(event_id: str):
     """Update an event"""
     data = request.get_json()
@@ -509,6 +545,7 @@ def update_event(event_id: str):
     return jsonify({'error': 'Event not found or invalid updates'}), 404
 
 @app.route('/api/events/<event_id>', methods=['DELETE'])
+@require_auth
 def delete_event(event_id: str):
     """Delete an event"""
     if em.delete_event(event_id):
@@ -538,7 +575,8 @@ def verify_unlock_code(event_id: str):
             stored_code = f.read().strip()
 
     if data['unlockCode'] == stored_code:
-        return jsonify({'success': True}), 200
+        token = generate_auth_token(event_id)
+        return jsonify({'success': True, 'token': token}), 200
     else:
         return jsonify({'error': 'Incorrect unlock code'}), 401
 
@@ -554,6 +592,7 @@ def get_event_performances(event_id: str):
     return jsonify(performances)
 
 @app.route('/api/events/<event_id>/performances', methods=['POST'])
+@require_auth
 def create_event_performance(event_id: str):
     """Create a new performance within an event"""
     event = em.get_event(event_id)
@@ -636,6 +675,7 @@ def get_event_performance(event_id: str, performance_id: str):
     return jsonify({'error': 'Performance not found'}), 404
 
 @app.route('/api/events/<event_id>/performances/<performance_id>', methods=['PUT'])
+@require_auth
 def update_event_performance(event_id: str, performance_id: str):
     """Update a performance within an event"""
     data = request.get_json()
@@ -648,6 +688,7 @@ def update_event_performance(event_id: str, performance_id: str):
     return jsonify({'error': 'Performance not found'}), 404
 
 @app.route('/api/events/<event_id>/performances/<performance_id>', methods=['DELETE'])
+@require_auth
 def delete_event_performance(event_id: str, performance_id: str):
     """Delete a performance within an event"""
     if em.delete_performance(event_id, performance_id):
@@ -655,6 +696,7 @@ def delete_event_performance(event_id: str, performance_id: str):
     return jsonify({'error': 'Performance not found'}), 404
 
 @app.route('/api/events/<event_id>/performances/<performance_id>/upload', methods=['POST'])
+@require_auth
 def upload_event_track(event_id: str, performance_id: str):
     """Upload a track file to a performance within an event"""
     if 'file' not in request.files:
@@ -755,6 +797,7 @@ def serve_event_track_file(event_id: str, performance_id: str, filename: str):
     return rv
 
 @app.route('/api/events/<event_id>/performances/reorder', methods=['POST'])
+@require_auth
 def reorder_event_performances(event_id: str):
     """Reorder performances within an event"""
     event = em.get_event(event_id)
@@ -770,6 +813,7 @@ def reorder_event_performances(event_id: str):
     return jsonify({'error': 'Failed to reorder performances'}), 500
 
 @app.route('/api/events/<event_id>/performances/<performance_id>/tracks/<track_id>/completion', methods=['PUT'])
+@require_auth
 def update_track_completion(event_id: str, performance_id: str, track_id: str):
     """Update track completion status"""
     event = em.get_event(event_id)
@@ -790,6 +834,7 @@ def update_track_completion(event_id: str, performance_id: str, track_id: str):
     return jsonify({'error': 'Track not found or failed to update'}), 404
 
 @app.route('/api/events/<event_id>/performances/<performance_id>/tracks', methods=['POST'])
+@require_auth
 def add_tracks_to_performance(event_id: str, performance_id: str):
     """Add multiple tracks to a performance"""
     event = em.get_event(event_id)
@@ -829,6 +874,7 @@ def add_tracks_to_performance(event_id: str, performance_id: str):
     return jsonify({'message': f'Added {len(added_tracks)} tracks', 'tracks': added_tracks}), 201
 
 @app.route('/api/events/<event_id>/performances/<performance_id>/tracks/<track_id>', methods=['DELETE'])
+@require_auth
 def delete_track(event_id: str, performance_id: str, track_id: str):
     """Delete a specific track from a performance"""
     event = em.get_event(event_id)
@@ -877,6 +923,7 @@ def get_event_breaks(event_id: str):
     return jsonify(breaks)
 
 @app.route('/api/events/<event_id>/breaks', methods=['POST'])
+@require_auth
 def create_event_break(event_id: str):
     """Create a new break within an event"""
     event = em.get_event(event_id)
@@ -899,6 +946,7 @@ def create_event_break(event_id: str):
     return jsonify({'error': 'Failed to create break'}), 500
 
 @app.route('/api/events/<event_id>/breaks/<break_id>', methods=['PUT'])
+@require_auth
 def update_event_break(event_id: str, break_id: str):
     """Update a break"""
     event = em.get_event(event_id)
@@ -922,6 +970,7 @@ def update_event_break(event_id: str, break_id: str):
     return jsonify({'error': 'Break not found'}), 404
 
 @app.route('/api/events/<event_id>/breaks/<break_id>', methods=['DELETE'])
+@require_auth
 def delete_event_break(event_id: str, break_id: str):
     """Delete a break"""
     event = em.get_event(event_id)
@@ -934,6 +983,7 @@ def delete_event_break(event_id: str, break_id: str):
     return jsonify({'error': 'Break not found'}), 404
 
 @app.route('/api/events/<event_id>/breaks/reorder', methods=['POST'])
+@require_auth
 def reorder_event_breaks(event_id: str):
     """Reorder breaks within an event"""
     event = em.get_event(event_id)
@@ -970,6 +1020,7 @@ def reorder_event_breaks(event_id: str):
 
 # Event cover image endpoints
 @app.route('/api/events/<event_id>/cover', methods=['POST'])
+@require_auth
 def upload_event_cover(event_id: str):
     """Upload a cover image for an event"""
     event = em.get_event(event_id)
@@ -1008,6 +1059,7 @@ def get_event_cover(event_id: str):
     return jsonify({'error': 'Cover image not found'}), 404
 
 @app.route('/api/events/<event_id>/position', methods=['PUT'])
+@require_auth
 def update_event_image_position(event_id: str):
     """Update the position of the event's cover image"""
     event = em.get_event(event_id)

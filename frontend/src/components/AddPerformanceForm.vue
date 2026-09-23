@@ -227,7 +227,8 @@ async function handleSubmit() {
 
     const response = await fetch(`/api/events/${props.eventId}/performances`, {
       method: 'POST',
-      body: formData
+        headers: useEventStore().getAuthHeaders(props.eventId, true),
+        body: formData
     })
 
     if (!response.ok) {

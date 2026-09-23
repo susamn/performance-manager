@@ -49,12 +49,15 @@ def test_update_event_live_status(client):
     response = client.post('/api/events', json={
         'name': 'Live Toggle Event'
     })
-    event_id = response.get_json()['id']
+    data = response.get_json()
+    event_id = data['id']
+    token = data['token']
 
     # Update liveEnabled to False
     update_res = client.put(f'/api/events/{event_id}', json={
         'liveEnabled': False
-    })
+    }, headers={'Authorization': f'Bearer {token}'})
+    
     assert update_res.status_code == 200
     updated_data = update_res.get_json()
     assert updated_data['liveEnabled'] == False
@@ -63,10 +66,9 @@ def test_update_event_live_status(client):
     get_res = client.get(f'/api/events/{event_id}')
     assert get_res.get_json()['liveEnabled'] == False
 
-def test_unauthenticated_api_vulnerability(client):
+def test_unauthenticated_api_vulnerability_fixed(client):
     """
-    This test highlights that ANY user can delete an event without the unlock code.
-    This was identified as a HIGH severity vulnerability in the QA report.
+    Test that endpoints are now protected against unauthenticated access.
     """
     # Create event with a secure unlock code
     create_res = client.post('/api/events', json={
@@ -75,11 +77,10 @@ def test_unauthenticated_api_vulnerability(client):
     })
     event_id = create_res.get_json()['id']
 
-    # A malicious user can just send a DELETE request directly to the API
-    # without providing the unlock code
+    # A malicious user tries to send a DELETE request directly to the API
     delete_res = client.delete(f'/api/events/{event_id}')
-    assert delete_res.status_code == 204
+    assert delete_res.status_code == 401 # Unauthorized
 
-    # Verify event is actually deleted
+    # Verify event still exists
     get_res = client.get(f'/api/events/{event_id}')
-    assert get_res.status_code == 404
+    assert get_res.status_code == 200
