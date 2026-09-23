@@ -75,16 +75,16 @@
           <!-- Controls -->
           <div class="flex items-center justify-center gap-6 sm:gap-8">
             <button @click="sendCommand('stop')" 
-                    :disabled="!currentTrackId"
+                    :disabled="!currentTrackId || !liveToken"
                     class="w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200"
-                    :class="currentTrackId ? 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white border border-gray-700' : 'bg-gray-800/50 text-gray-600 cursor-not-allowed'">
+                    :class="currentTrackId && liveToken ? 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white border border-gray-700' : 'bg-gray-800/50 text-gray-600 cursor-not-allowed'">
               <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M18,18H6V6H18V18Z" /></svg>
             </button>
             
             <button @click="sendCommand(playState.isPlaying ? 'pause' : 'play')" 
-                    :disabled="!currentTrackId"
+                    :disabled="!currentTrackId || !liveToken"
                     class="w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 transform"
-                    :class="currentTrackId ? 'bg-player-accent text-black hover:scale-105 shadow-lg shadow-player-accent/30' : 'bg-gray-800/50 text-gray-600 cursor-not-allowed'">
+                    :class="currentTrackId && liveToken ? 'bg-player-accent text-black hover:scale-105 shadow-lg shadow-player-accent/30' : 'bg-gray-800/50 text-gray-600 cursor-not-allowed'">
               <svg v-if="playState.isPlaying" class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M14,19H18V5H14M6,19H10V5H6V19Z" /></svg>
               <svg v-else class="w-10 h-10 ml-2" fill="currentColor" viewBox="0 0 24 24"><path d="M8,5.14V19.14L19,12.14L8,5.14Z" /></svg>
             </button>
@@ -94,6 +94,18 @@
             </button>
           </div>
         </div>
+      </div>
+
+      
+      <!-- Unlock Banner -->
+      <div v-if="!liveToken" class="bg-gray-800 rounded-xl p-4 mb-6 border border-yellow-500/50">
+        <h3 class="text-lg font-semibold text-white mb-2">Unlock Controls</h3>
+        <p class="text-sm text-gray-400 mb-4">You must enter the Live PIN to select or control tracks.</p>
+        <div class="flex gap-2">
+          <input v-model="livePin" type="password" placeholder="Enter Live PIN" class="flex-1 bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:outline-none focus:border-player-accent" @keyup.enter="unlockLiveView" />
+          <button @click="unlockLiveView" class="bg-player-accent text-black font-medium px-4 py-2 rounded hover:bg-green-400">Unlock</button>
+        </div>
+        <p v-if="unlockError" class="text-red-400 text-sm mt-2">{{ unlockError }}</p>
       </div>
 
       <!-- Track List -->
@@ -111,9 +123,9 @@
             <p class="text-sm text-gray-400">{{ formatTime(track.duration) }}</p>
           </div>
 
-          <button @click="selectTrack(track)" 
+          <button @click="selectTrack(track)" :disabled="!liveToken" 
                   class="px-4 py-2 rounded-lg font-medium transition-colors text-sm"
-                  :class="track.id === currentTrackId ? 'bg-player-accent/20 text-player-accent' : 'bg-gray-700 text-white hover:bg-gray-600'">
+                  :class="track.id === currentTrackId ? 'bg-player-accent/20 text-player-accent' : (!liveToken ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-gray-700 text-white hover:bg-gray-600')">
             {{ track.id === currentTrackId ? 'Selected' : 'Select' }}
           </button>
         </div>
@@ -139,6 +151,11 @@ const activePerformance = ref<Performance | null>(null)
 const eventName = ref<string>('')
 const activeEventId = ref<string>(props.eventId)
 const isLiveEnabled = ref(true)
+
+const livePin = ref('')
+const liveToken = ref('')
+const unlockError = ref('')
+
 const playState = ref<PlayState>({
   isPlaying: false,
   currentTime: 0,
@@ -171,7 +188,13 @@ onMounted(() => {
     if (state.eventId === props.eventId) {
       activeEventId.value = state.eventId
       eventName.value = state.eventName
+      
+      // Reset lock if performance changed
+      if (activePerformance.value && state.performance && activePerformance.value.id !== state.performance.id) {
+        liveToken.value = ''
+      }
       activePerformance.value = state.performance
+
       if (state.liveEnabled !== undefined) {
         isLiveEnabled.value = state.liveEnabled
       }
@@ -179,6 +202,12 @@ onMounted(() => {
         playState.value = state.playState
       }
     }
+  })
+
+  
+  socket.on('live_unauthorized', (data: any) => {
+    liveToken.value = ''
+    unlockError.value = data.error || 'Session expired. Please unlock again.'
   })
 
   socket.on('play_state_updated', (data: any) => {
@@ -192,11 +221,40 @@ onUnmounted(() => {
   socket.off('connected')
   socket.off('active_live_state')
   socket.off('play_state_updated')
+  
   socket.off('event_state_updated')
+  socket.off('live_unauthorized')
+
 })
 
+
+async function unlockLiveView() {
+  if (!livePin.value.trim()) return
+  
+  try {
+    const response = await fetch(`/api/events/${props.eventId}/verify-live-pin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ livePin: livePin.value.trim() })
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      liveToken.value = data.token
+      livePin.value = ''
+      unlockError.value = ''
+    } else {
+      unlockError.value = 'Incorrect PIN'
+      livePin.value = ''
+    }
+  } catch (error) {
+    unlockError.value = 'Server error'
+  }
+}
+
 function sendCommand(action: string) {
-  socket.emit('performer_send_command', { action, eventId: activeEventId.value })
+  if (!liveToken.value) return;
+  socket.emit('performer_send_command', { action, eventId: activeEventId.value, token: liveToken.value })
 }
 
 function selectTrack(track: Track) {
@@ -210,7 +268,8 @@ function selectTrack(track: Track) {
       ...track,
       url: fixedUrl
     }
-    socket.emit('performer_send_command', { action: 'loadTrack', track: trackWithUrl, eventId: activeEventId.value })
+    if (!liveToken.value) return;
+    socket.emit('performer_send_command', { action: 'loadTrack', track: trackWithUrl, eventId: activeEventId.value, token: liveToken.value })
   }
 }
 
