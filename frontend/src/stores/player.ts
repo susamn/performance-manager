@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { Howl } from 'howler'
 import type { PlayState, Track } from '@/types'
 import { socket } from '@/socket'
+import { useEventStore } from '@/stores/event'
 
 export const usePlayerStore = defineStore('player', () => {
   const playState = ref<PlayState>({
@@ -19,9 +20,15 @@ export const usePlayerStore = defineStore('player', () => {
   // Listen for performer commands
   socket.on('admin_receive_command', (cmd: any) => {
     console.log('Received command from performer:', cmd)
-    if (cmd.eventId) {
-      playState.value.currentEventId = cmd.eventId
+    const eventStore = useEventStore()
+    
+    // CRITICAL FIX: Only process commands meant for the event currently opened in the admin dashboard
+    if (!cmd.eventId || !eventStore.selectedEvent || cmd.eventId !== eventStore.selectedEvent.id) {
+      console.warn(`Ignored command for event ${cmd.eventId} (currently viewing ${eventStore.selectedEvent?.id})`)
+      return
     }
+
+    playState.value.currentEventId = cmd.eventId
     
     if (cmd.action === 'play') play()
     if (cmd.action === 'pause') pause()

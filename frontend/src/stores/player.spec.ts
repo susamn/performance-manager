@@ -61,6 +61,8 @@ describe('Player Store', () => {
     const store = usePlayerStore()
     const track = { id: '1', filename: 'song.mp3', performer: 'Artist', url: 'http://test.com/song.mp3' }
     
+    // Set event ID so broadcast happens
+    store.playState.currentEventId = 'test-event'
     store.loadTrack(track)
     
     expect(store.currentTrack).toEqual(track)
