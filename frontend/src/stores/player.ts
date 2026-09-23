@@ -25,8 +25,6 @@ export const usePlayerStore = defineStore('player', () => {
     if (cmd.action === 'seek' && typeof cmd.percentage === 'number') seek(cmd.percentage)
     if (cmd.action === 'loadTrack' && cmd.track) {
       loadTrack(cmd.track)
-      // Automatically play when performer selects a track
-      setTimeout(() => play(), 100) 
     }
   })
 

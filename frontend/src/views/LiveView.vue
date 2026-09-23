@@ -22,29 +22,38 @@
 
     <!-- Active Performance State -->
     <div v-else class="max-w-2xl mx-auto w-full flex-1 flex flex-col">
-      <div class="text-center mb-8">
-        <p class="text-amber-500 text-sm font-semibold uppercase tracking-wider mb-2">{{ eventName }}</p>
-        <h1 class="text-4xl md:text-5xl font-bold mb-2">{{ activePerformance.name }}</h1>
-        <p class="text-2xl text-gray-400">by {{ activePerformance.performer }}</p>
+      <div class="text-center mb-6">
+        <p class="text-amber-500 text-sm font-semibold uppercase tracking-wider mb-1">{{ eventName }}</p>
+        <h1 class="text-3xl md:text-4xl font-bold mb-1">{{ activePerformance.name }}</h1>
+        <p class="text-xl text-gray-400">by {{ activePerformance.performer }}</p>
       </div>
 
-      <!-- Playback Progress Visualization -->
-      <div v-if="currentTrackId" class="mb-8 p-6 bg-gray-800 rounded-2xl border-2 border-player-accent/30 text-center relative overflow-hidden">
-        <div class="absolute inset-0 bg-player-accent/5" :style="{ width: `${progress}%` }"></div>
+      <!-- Playback Progress Visualization (Permanent Player Area) -->
+      <div class="mb-6 p-6 bg-gray-800 rounded-2xl border-2 border-gray-700 text-center relative overflow-hidden transition-colors"
+           :class="{'border-player-accent/50 shadow-[0_0_20px_rgba(16,185,129,0.1)]': currentTrackId}">
+        
+        <div v-if="currentTrackId" class="absolute inset-0 bg-player-accent/5" :style="{ width: `${progress}%` }"></div>
+        
         <div class="relative z-10">
           <p class="text-sm text-gray-400 mb-1">Now Playing</p>
-          <p class="text-xl font-bold text-white mb-4 truncate">{{ currentTrackName }}</p>
+          <p class="text-xl font-bold text-white mb-4 truncate">{{ currentTrackName || 'No track selected' }}</p>
           
-          <div class="flex items-center justify-between text-sm font-mono text-player-accent mb-4">
+          <div class="flex items-center justify-between text-sm font-mono text-gray-400 mb-4" :class="{'text-player-accent': currentTrackId}">
             <span>{{ formatTime(playState.currentTime) }}</span>
             <span>{{ formatTime(playState.duration) }}</span>
           </div>
 
           <div class="flex justify-center gap-6">
-            <button @click="sendCommand('stop')" class="w-16 h-16 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-white transition-colors">
+            <button @click="sendCommand('stop')" 
+                    :disabled="!currentTrackId"
+                    class="w-16 h-16 rounded-full flex items-center justify-center text-white transition-colors"
+                    :class="currentTrackId ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-800 opacity-50 cursor-not-allowed'">
               <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M18,18H6V6H18V18Z" /></svg>
             </button>
-            <button @click="sendCommand(playState.isPlaying ? 'pause' : 'play')" class="w-20 h-20 rounded-full bg-player-accent hover:bg-green-400 flex items-center justify-center text-black transition-colors shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+            <button @click="sendCommand(playState.isPlaying ? 'pause' : 'play')" 
+                    :disabled="!currentTrackId"
+                    class="w-20 h-20 rounded-full flex items-center justify-center text-black transition-colors"
+                    :class="currentTrackId ? 'bg-player-accent hover:bg-green-400 shadow-[0_0_20px_rgba(16,185,129,0.3)]' : 'bg-gray-700 opacity-50 cursor-not-allowed'">
               <svg v-if="playState.isPlaying" class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M14,19H18V5H14M6,19H10V5H6V19Z" /></svg>
               <svg v-else class="w-10 h-10 ml-2" fill="currentColor" viewBox="0 0 24 24"><path d="M8,5.14V19.14L19,12.14L8,5.14Z" /></svg>
             </button>
@@ -53,24 +62,25 @@
       </div>
 
       <!-- Track List -->
-      <div class="space-y-4 flex-1">
+      <div class="space-y-3 flex-1 overflow-y-auto">
         <h3 class="text-lg font-semibold text-gray-300">Tracks ({{ activePerformance.tracks.length }})</h3>
         
         <div v-for="track in activePerformance.tracks" :key="track.id" 
              class="bg-gray-800 rounded-xl p-4 flex items-center gap-4 transition-all"
-             :class="{'border-2 border-player-accent shadow-[0_0_15px_rgba(16,185,129,0.2)]': track.id === currentTrackId}">
+             :class="{'border border-player-accent': track.id === currentTrackId}">
           
-          <button @click="playTrack(track)" 
-                  class="w-14 h-14 shrink-0 rounded-full flex items-center justify-center transition-colors"
-                  :class="track.id === currentTrackId && playState.isPlaying ? 'bg-player-accent text-black animate-pulse' : 'bg-gray-700 text-white hover:bg-gray-600'">
-            <svg v-if="track.id === currentTrackId && playState.isPlaying" class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M14,19H18V5H14M6,19H10V5H6V19Z" /></svg>
-            <svg v-else class="w-7 h-7 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8,5.14V19.14L19,12.14L8,5.14Z" /></svg>
-          </button>
-          
-          <div class="flex-1 min-w-0" @click="playTrack(track)">
-            <p class="font-medium text-lg text-white truncate cursor-pointer">{{ track.filename }}</p>
+          <div class="flex-1 min-w-0">
+            <p class="font-medium text-lg text-white truncate" :class="{'text-player-accent': track.id === currentTrackId}">
+              {{ track.filename }}
+            </p>
             <p class="text-sm text-gray-400">{{ formatTime(track.duration) }}</p>
           </div>
+
+          <button @click="selectTrack(track)" 
+                  class="px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+                  :class="track.id === currentTrackId ? 'bg-player-accent/20 text-player-accent' : 'bg-gray-700 text-white hover:bg-gray-600'">
+            {{ track.id === currentTrackId ? 'Selected' : 'Select' }}
+          </button>
         </div>
 
         <div v-if="activePerformance.tracks.length === 0" class="text-center py-8 text-gray-500">
@@ -143,19 +153,22 @@ function sendCommand(action: string) {
   socket.emit('performer_send_command', { action })
 }
 
-function playTrack(track: Track) {
-  if (track.id === currentTrackId.value) {
-    sendCommand(playState.value.isPlaying ? 'pause' : 'play')
-  } else {
+function selectTrack(track: Track) {
+  if (track.id !== currentTrackId.value) {
+    const originalUrl = track.url || ''
+    const fixedUrl = originalUrl.includes(`/api/events/${activeEventId.value}`) 
+      ? originalUrl 
+      : originalUrl.replace('/api/performances/', `/api/events/${activeEventId.value}/performances/`)
+      
     const trackWithUrl = {
       ...track,
-      url: `/api/events/${activeEventId.value}/performances/${activePerformance.value?.id}/tracks/${track.id}/file`
+      url: fixedUrl
     }
     socket.emit('performer_send_command', { action: 'loadTrack', track: trackWithUrl })
   }
 }
 
-function formatTime(seconds: number): string {
+function formatTime(seconds: number | undefined): string {
   if (!seconds) return '0:00'
   const mins = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
