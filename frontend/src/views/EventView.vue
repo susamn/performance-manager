@@ -69,6 +69,25 @@
               <span class="hidden sm:inline">Open Live View</span>
             </a>
 
+            <!-- Import JSON Button -->
+            <button
+              @click="triggerImportJson"
+              class="px-3.5 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 hover:text-white border border-gray-600 rounded-lg flex items-center space-x-2 transition-colors text-sm"
+              title="Import Performances from JSON (Admin Unlocked required)"
+            >
+              <svg class="w-4 h-4 text-player-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              <span class="hidden sm:inline">Import JSON</span>
+            </button>
+            <input
+              type="file"
+              ref="jsonFileInputRef"
+              accept=".json,application/json"
+              class="hidden"
+              @change="onJsonFileSelected"
+            />
+
             <!-- Lock Toggle Button -->
             <div class="relative">
             <button
@@ -555,6 +574,17 @@
       @close="closeEditModal"
       @updated="onPerformanceUpdated"
     />
+
+    <!-- Import Performances Confirmation Modal -->
+    <ImportPerformancesModal
+      :is-open="showImportModal"
+      :incoming-count="pendingImportItems.length"
+      :existing-count="existingPerformancesCount"
+      :requires-text-confirmation="existingPerformancesCount > 0"
+      :is-submitting="isImporting"
+      @close="closeImportModal"
+      @confirm="executeImport"
+    />
   </div>
 </template>
 
@@ -569,6 +599,7 @@ import PerformanceCard from '@/components/PerformanceCard.vue'
 import BreakCard from '@/components/BreakCard.vue'
 import MediaPlayer from '@/components/MediaPlayer.vue'
 import EditPerformanceModal from '@/components/EditPerformanceModal.vue'
+import ImportPerformancesModal from '@/components/ImportPerformancesModal.vue'
 import Sortable from 'sortablejs'
 import type { Performance, Track } from '@/types'
 import { socket } from '@/socket'
@@ -716,13 +747,14 @@ const sortedItems = computed(() => {
   if (searchQuery.value.trim()) {
     const query = searchQuery.value.toLowerCase().trim()
     allItems = allItems.filter(item => {
-      // Search in performance name, performer, type, and mode
-      const searchFields = [
+      // Search in performance code, name, performer, type, and mode
+      const searchFields = ([
+        item.code,
         item.name,
         item.performer,
         item.type,
         item.mode
-      ].filter(Boolean).map(field => field.toLowerCase())
+      ].filter((field): field is string => Boolean(field))).map(field => field.toLowerCase())
 
       // Also search in track filenames
       if (item.tracks && item.tracks.length > 0) {
@@ -1000,6 +1032,72 @@ async function reorderPerformances(newOrder: string[]) {
   }
 }
 
+// JSON Import state & handlers
+const jsonFileInputRef = ref<HTMLInputElement>()
+const showImportModal = ref(false)
+const pendingImportItems = ref<any[]>([])
+const isImporting = ref(false)
+
+const existingPerformancesCount = computed(() => {
+  return sortedPerformances.value.length
+})
+
+function triggerImportJson() {
+  if (lockState.value !== 'unlocked') {
+    dialogStore.alert('You must unlock admin access to import performances.', 'Admin Unlock Required', 'warning')
+    return
+  }
+  jsonFileInputRef.value?.click()
+}
+
+function onJsonFileSelected(inputEvent: Event) {
+  const target = inputEvent.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const content = e.target?.result as string
+      const parsed = JSON.parse(content)
+      const items = Array.isArray(parsed) ? parsed : (parsed.performances && Array.isArray(parsed.performances) ? parsed.performances : null)
+      if (!items || items.length === 0) {
+        dialogStore.alert('JSON file must contain a non-empty array of performances.', 'Invalid JSON', 'error')
+        return
+      }
+      pendingImportItems.value = items
+      showImportModal.value = true
+    } catch (err: any) {
+      dialogStore.alert(`Failed to parse JSON file: ${err.message}`, 'Invalid JSON', 'error')
+    } finally {
+      if (target) target.value = ''
+    }
+  }
+  reader.readAsText(file)
+}
+
+function closeImportModal() {
+  showImportModal.value = false
+  pendingImportItems.value = []
+}
+
+async function executeImport() {
+  if (!pendingImportItems.value.length) return
+  isImporting.value = true
+
+  try {
+    const imported = await eventStore.importPerformances(eventId, pendingImportItems.value)
+    closeImportModal()
+    await eventStore.loadEventPerformances(eventId)
+    await dialogStore.alert(`Successfully imported ${imported.length} performances.`, 'Import Complete', 'success')
+  } catch (error: any) {
+    console.error('Import failed:', error)
+    await dialogStore.alert(error.message || 'Failed to import performances. Please try again.', 'Import Failed', 'error')
+  } finally {
+    isImporting.value = false
+  }
+}
+
 async function onPerformanceCreated(performance: Performance) {
   // Calculate the order for the new performance (after all existing active items)
   const allItems = [...sortedItems.value.active, ...sortedItems.value.completed]
@@ -1181,6 +1279,7 @@ function formatDate(dateString: string): string {
 function convertPerformanceToBreak(performance: Performance): any {
   return {
     id: performance.id,
+    code: performance.code,
     name: performance.name,
     type: performance.mode as any, // mode contains the break type
     isDone: performance.isDone,

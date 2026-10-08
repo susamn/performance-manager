@@ -22,6 +22,15 @@
             </svg>
           </div>
 
+          <!-- 3-character Unique Code (Bold, Bigger font, Aligned Left) -->
+          <div
+            v-if="performance.code"
+            class="text-xl font-black font-mono tracking-wider text-player-accent shrink-0 px-2.5 py-1 bg-black/40 border border-player-accent/30 rounded-lg select-all"
+            title="Performance Code"
+          >
+            {{ performance.code }}
+          </div>
+
           <div class="flex-1 min-w-0">
             <h4 class="text-base font-semibold text-white truncate">{{ performance.name }}</h4>
             <p class="text-sm text-gray-300 truncate">by {{ performance.performer }}</p>

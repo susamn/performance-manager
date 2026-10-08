@@ -163,6 +163,26 @@ export const useEventStore = defineStore('event', () => {
     }
   }
 
+  async function importPerformances(eventId: string, items: any[]) {
+    try {
+      const response = await fetch(`/api/events/${eventId}/performances/import`, {
+        method: 'POST',
+        headers: getAuthHeaders(eventId),
+        body: JSON.stringify(items),
+      })
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}))
+        throw new Error(errData.error || 'Failed to import performances')
+      }
+      const imported = await response.json()
+      eventPerformances.value = imported
+      return imported
+    } catch (error) {
+      console.error('Error importing performances:', error)
+      throw error
+    }
+  }
+
   async function updatePerformance(eventId: string, performanceId: string, updates: Partial<Performance>) {
     try {
       const response = await fetch(`/api/events/${eventId}/performances/${performanceId}`, {
@@ -261,6 +281,7 @@ export const useEventStore = defineStore('event', () => {
     selectEvent,
     loadEventPerformances,
     createPerformance,
+    importPerformances,
     updatePerformance,
     deletePerformance,
     reorderPerformances,

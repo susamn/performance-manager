@@ -175,3 +175,46 @@ def test_delete_event_with_admin_pin(client):
     get_res = client.get(f'/api/events/{event_id}')
     assert get_res.status_code == 404
 
+def test_performance_3_char_code_and_import(client):
+    """Test 3-character unique codes and JSON import strictly maintaining sequence."""
+    import re
+    # Create event
+    response = client.post('/api/events', json={
+        'name': 'Code Test Event',
+        'unlockCode': '1234'
+    })
+    event_id = response.get_json()['id']
+    token = response.get_json()['token']
+    auth_headers = {'Authorization': f'Bearer {token}'}
+
+    # Create a performance
+    create_res = client.post(f'/api/events/{event_id}/performances', json={
+        'name': 'Classical Song',
+        'performer': 'Alice'
+    }, headers=auth_headers)
+    assert create_res.status_code == 201
+    perf = create_res.get_json()
+    assert 'code' in perf
+    assert re.match(r'^[A-Z]{2}[1-9]$', perf['code'])
+
+    # Test JSON Import with strict sequence
+    import_payload = [
+        {'name': 'Intro Act', 'performer': 'Host', 'type': 'Break', 'mode': 'Announcement'},
+        {'name': 'Dance Duo', 'performer': 'Bob & Carol', 'type': 'Dance', 'mode': 'Duet'},
+        {'name': 'Solo Song', 'performer': 'David', 'type': 'Song', 'mode': 'Solo'}
+    ]
+    import_res = client.post(f'/api/events/{event_id}/performances/import', json=import_payload, headers=auth_headers)
+    assert import_res.status_code == 200
+    imported = import_res.get_json()
+    assert len(imported) == 3
+
+    # Verify strict sequence maintenance and code generation
+    codes = set()
+    for idx, item in enumerate(imported):
+        assert item['order'] == idx
+        assert item['name'] == import_payload[idx]['name']
+        assert re.match(r'^[A-Z]{2}[1-9]$', item['code'])
+        assert item['code'] not in codes
+        codes.add(item['code'])
+
+

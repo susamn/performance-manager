@@ -301,7 +301,7 @@ async function downloadEventPDF(event: Event) {
                   <div class="item">
                     <div class="item-number">${index + 1}</div>
                     <div class="item-content">
-                      <div class="item-title performance-title">${performance.name}</div>
+                      <div class="item-title performance-title">${performance.code ? `<span style="font-family: monospace; font-weight: 800; color: #10b981; margin-right: 0.5rem; background: rgba(16, 185, 129, 0.15); padding: 0.1rem 0.4rem; border-radius: 0.25rem;">[${performance.code}]</span>` : ''}${performance.name}</div>
                       <div class="item-performer">by ${performance.performer}</div>
                       <div class="item-details">
                         <span class="badge ${performance.isDone ? 'badge-completed' : 'badge-pending'}">
@@ -336,7 +336,7 @@ async function downloadEventPDF(event: Event) {
                   <div class="item">
                     <div class="item-number">${index + 1}</div>
                     <div class="item-content">
-                      <div class="item-title break-title">🔄 ${breakItem.name}</div>
+                      <div class="item-title break-title">${breakItem.code ? `<span style="font-family: monospace; font-weight: 800; color: #f59e0b; margin-right: 0.5rem; background: rgba(245, 158, 11, 0.15); padding: 0.1rem 0.4rem; border-radius: 0.25rem;">[${breakItem.code}]</span>` : ''}🔄 ${breakItem.name}</div>
                       <div class="item-details">
                         <span class="badge ${breakItem.isDone ? 'badge-completed' : 'badge-break'}">
                           ${breakItem.isDone ? '✓ COMPLETED' : '⏸ BREAK'}

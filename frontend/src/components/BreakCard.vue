@@ -18,6 +18,15 @@
         </svg>
       </div>
 
+      <!-- 3-character Code (Bold, Bigger font, Aligned Left) -->
+      <div
+        v-if="breakItem.code"
+        class="text-xl font-black font-mono tracking-wider text-amber-400 shrink-0 px-2.5 py-1 bg-black/40 border border-amber-400/30 rounded-lg select-all mr-3"
+        title="Break Code"
+      >
+        {{ breakItem.code }}
+      </div>
+
       <!-- Break Info -->
       <div class="flex-1 min-w-0 text-center" :class="disabled ? 'cursor-not-allowed' : 'cursor-pointer'" @click="!disabled && $emit('select', breakItem)">
         <h4 class="text-lg font-medium text-white mb-1">{{ breakItem.name }}</h4>

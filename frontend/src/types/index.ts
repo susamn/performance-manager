@@ -9,6 +9,7 @@ export interface Track {
 
 export interface Performance {
   id: string
+  code?: string
   name: string
   performer: string
   type: 'Song' | 'Dance' | 'Recitation' | 'Break'
@@ -23,6 +24,7 @@ export interface Performance {
 
 export interface Break {
   id: string
+  code?: string
   name: string
   type: 'Lunch' | 'Dinner' | 'Broadcast' | 'Announcement' | 'Appearence' | 'Special Show'
   isDone: boolean

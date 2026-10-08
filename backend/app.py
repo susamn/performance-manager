@@ -4,6 +4,8 @@ import os
 import json
 import uuid
 import shutil
+import random
+import string
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Any, Optional
@@ -27,6 +29,21 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Secret key for signing tokens (regenerated on server restart)
 app.secret_key = secrets.token_hex(32)
+
+
+def generate_performance_code(existing_codes: Optional[set] = None) -> str:
+    """Generate unique 3-char code: 2 uppercase letters [A-Z] + 1 digit [1-9] (e.g. AB3)"""
+    if existing_codes is None:
+        existing_codes = set()
+    digits_1_to_9 = "123456789"
+    for _ in range(5000):
+        c1 = random.choice(string.ascii_uppercase)
+        c2 = random.choice(string.ascii_uppercase)
+        d = random.choice(digits_1_to_9)
+        code = f"{c1}{c2}{d}"
+        if code not in existing_codes:
+            return code
+    return f"{random.choice(string.ascii_uppercase)}{random.choice(string.ascii_uppercase)}{random.choice(digits_1_to_9)}"
 
 
 def generate_live_token(event_id: str) -> str:
@@ -215,7 +232,20 @@ class EventManager:
         if performances_file.exists():
             try:
                 with open(performances_file, 'r') as f:
-                    return json.load(f)
+                    performances = json.load(f)
+                
+                # Ensure each performance has a unique 3-character code ([A-Z]{2}[1-9])
+                existing_codes = {p['code'] for p in performances if p.get('code')}
+                modified = False
+                for p in performances:
+                    if not p.get('code'):
+                        code = generate_performance_code(existing_codes)
+                        p['code'] = code
+                        existing_codes.add(code)
+                        modified = True
+                if modified:
+                    self.save_event_performances(event_id, performances)
+                return performances
             except (json.JSONDecodeError, FileNotFoundError):
                 return []
         return []
@@ -242,8 +272,12 @@ class EventManager:
         performance_dir = self.get_performance_dir(event_id, performance_id)
         performance_dir.mkdir(exist_ok=True)
 
+        existing_codes = {p['code'] for p in performances if p.get('code')}
+        code = generate_performance_code(existing_codes)
+
         performance = {
             'id': performance_id,
+            'code': code,
             'name': name,
             'performer': performer,
             'type': perf_type,
@@ -338,6 +372,73 @@ class EventManager:
             return True
         except Exception:
             return False
+
+    def import_performances(self, event_id: str, raw_items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Import performances from a list, strictly maintaining input sequence and assigning 3-char codes"""
+        event = self.get_event(event_id)
+        if not event:
+            return []
+
+        existing_codes = set()
+        new_performances = []
+
+        for index, item in enumerate(raw_items):
+            perf_id = item.get('id') or str(uuid.uuid4())
+            perf_dir = self.get_performance_dir(event_id, perf_id)
+            perf_dir.mkdir(exist_ok=True)
+
+            code = item.get('code')
+            if not code or len(code) != 3 or not (code[:2].isalpha() and code[:2].isupper() and code[2] in '123456789') or code in existing_codes:
+                code = generate_performance_code(existing_codes)
+            existing_codes.add(code)
+
+            perf_type = item.get('type', 'Song')
+            mode = item.get('mode', 'Solo')
+            name = item.get('name', f'Performance {index + 1}')
+            performer = item.get('performer', '')
+            is_done = bool(item.get('isDone', False))
+            created_at = item.get('createdAt') or datetime.now().isoformat()
+
+            tracks = []
+            for t_item in item.get('tracks', []):
+                track_id = t_item.get('id') or str(uuid.uuid4())
+                filename = t_item.get('filename', '')
+                t_performer = t_item.get('performer', performer)
+                duration = t_item.get('duration')
+                url = t_item.get('url') or (f"/api/events/{event_id}/performances/{perf_id}/files/{filename}" if filename else None)
+                is_completed = bool(t_item.get('isCompleted', False))
+
+                tracks.append({
+                    'id': track_id,
+                    'filename': filename,
+                    'performer': t_performer,
+                    'url': url,
+                    'duration': duration,
+                    'isCompleted': is_completed
+                })
+
+            perf_obj = {
+                'id': perf_id,
+                'code': code,
+                'name': name,
+                'performer': performer,
+                'type': perf_type,
+                'mode': mode,
+                'tracks': tracks,
+                'isDone': is_done,
+                'createdAt': created_at,
+                'order': index  # STRICT SEQUENCE REQUIREMENT
+            }
+
+            if 'expectedDuration' in item and item['expectedDuration'] is not None:
+                perf_obj['expectedDuration'] = item['expectedDuration']
+            if 'resolvedDuration' in item and item['resolvedDuration'] is not None:
+                perf_obj['resolvedDuration'] = item['resolvedDuration']
+
+            new_performances.append(perf_obj)
+
+        self.save_event_performances(event_id, new_performances)
+        return new_performances
 
     def update_track_completion(self, event_id: str, performance_id: str, track_id: str, is_completed: bool) -> Optional[Dict[str, Any]]:
         """Update track completion status"""
@@ -916,6 +1017,25 @@ def reorder_event_performances(event_id: str):
     if em.reorder_performances(event_id, data['order']):
         return jsonify({'success': True})
     return jsonify({'error': 'Failed to reorder performances'}), 500
+
+@app.route('/api/events/<event_id>/performances/import', methods=['POST'])
+@require_auth
+def import_event_performances(event_id: str):
+    """Import performances from JSON, strictly maintaining sequence"""
+    event = em.get_event(event_id)
+    if not event:
+        return jsonify({'error': 'Event not found'}), 404
+
+    data = request.get_json()
+    if data is None:
+        return jsonify({'error': 'No JSON payload provided'}), 400
+
+    raw_items = data.get('performances') if isinstance(data, dict) and 'performances' in data else data
+    if not isinstance(raw_items, list):
+        return jsonify({'error': 'Performances payload must be an array'}), 400
+
+    imported = em.import_performances(event_id, raw_items)
+    return jsonify(imported), 200
 
 @app.route('/api/events/<event_id>/performances/<performance_id>/tracks/<track_id>/completion', methods=['PUT'])
 @require_auth
