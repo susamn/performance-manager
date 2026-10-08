@@ -43,17 +43,10 @@
               <span class="hidden sm:inline">{{ event?.liveEnabled !== false ? 'Live: ON' : 'Live: OFF' }}</span>
             </button>
 
-            <!-- Passcodes (Admin & Live PIN) -->
-            <div v-if="event" class="hidden md:flex items-center gap-2 bg-gray-800/80 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs">
-              <div class="flex items-center gap-1.5" title="Admin Passcode">
-                <span class="text-amber-400 font-medium">Admin:</span>
-                <code class="font-mono text-amber-200 bg-gray-900 px-1 py-0.5 rounded text-[11px]">{{ event.unlockCode || '••••' }}</code>
-              </div>
-              <span class="text-gray-600">|</span>
-              <div class="flex items-center gap-1.5" title="Live Endpoint PIN">
-                <span class="text-player-accent font-medium">Live:</span>
-                <code class="font-mono text-green-200 bg-gray-900 px-1 py-0.5 rounded text-[11px]">{{ event.livePin || '••••' }}</code>
-              </div>
+            <!-- Live Endpoint PIN for Performers -->
+            <div v-if="event?.livePin" class="hidden md:flex items-center gap-1.5 bg-gray-800/80 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-gray-400" title="Live Endpoint PIN for performers">
+              <span class="text-player-accent font-medium">Live PIN:</span>
+              <code class="font-mono text-green-200 bg-gray-900 px-1 py-0.5 rounded text-[11px]">{{ event.livePin }}</code>
             </div>
 
             <!-- Open Live View Button -->

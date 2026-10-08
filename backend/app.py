@@ -619,13 +619,19 @@ def get_audio_duration(file_path: Path) -> Optional[int]:
         logging.warning(f"Could not extract duration from {file_path}: {e}")
     return None
 
+def sanitize_event_for_api(event_dict: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a copy of the event without sensitive admin unlock code"""
+    res = event_dict.copy()
+    res.pop('unlockCode', None)
+    return res
+
 # Event endpoints
 @app.route('/api/events', methods=['GET'])
 def get_events():
     """Get all events with performance counts"""
     events_with_counts = []
     for event in em.events:
-        event_with_count = event.copy()
+        event_with_count = sanitize_event_for_api(event)
         # Get performance count for this event
         try:
             # Load performances from the event's performances.json file
@@ -670,7 +676,7 @@ def create_event():
                     event['coverImage'] = cover_filename
 
         token = generate_auth_token(event['id'])
-        return jsonify({**event, 'token': token}), 201
+        return jsonify({**sanitize_event_for_api(event), 'token': token}), 201
     else:
         # Handle JSON data (for backward compatibility)
         data = request.get_json()
@@ -679,14 +685,14 @@ def create_event():
 
         event = em.create_event(data['name'], data.get('description', ''), data.get('unlockCode', '12345'), data.get('livePin', '0000'))
         token = generate_auth_token(event['id'])
-        return jsonify({**event, 'token': token}), 201
+        return jsonify({**sanitize_event_for_api(event), 'token': token}), 201
 
 @app.route('/api/events/<event_id>', methods=['GET'])
 def get_event(event_id: str):
     """Get a specific event"""
     event = em.get_event(event_id)
     if event:
-        return jsonify(event)
+        return jsonify(sanitize_event_for_api(event))
     return jsonify({'error': 'Event not found'}), 404
 
 @app.route('/api/events/<event_id>', methods=['PUT'])
@@ -706,7 +712,7 @@ def update_event(event_id: str):
             # Emit live state change if liveEnabled changed
             if 'liveEnabled' in allowed_updates:
                 socketio.emit('event_state_updated', {'eventId': event_id, 'liveEnabled': allowed_updates['liveEnabled']})
-            return jsonify(event)
+            return jsonify(sanitize_event_for_api(event))
         
     return jsonify({'error': 'Event not found or invalid updates'}), 404
 
