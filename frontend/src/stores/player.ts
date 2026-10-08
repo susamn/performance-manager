@@ -82,7 +82,7 @@ export const usePlayerStore = defineStore('player', () => {
     }
   }
 
-  function loadTrack(track: Track, autoPlay = false) {
+  function loadTrack(track: Track) {
     if (!track.url) return
 
     // Clean up previous instance
@@ -90,7 +90,7 @@ export const usePlayerStore = defineStore('player', () => {
 
     // Reset state
     playState.value.currentTime = 0
-    playState.value.duration = 0
+    playState.value.duration = track.duration || 0
     playState.value.isPlaying = false
     isLoading.value = true
     loadProgress.value = 0
@@ -118,14 +118,18 @@ export const usePlayerStore = defineStore('player', () => {
           broadcastState()
         }
         console.log('Track loaded successfully (streaming ready)')
-        if (autoPlay) {
-          play()
-        }
       },
 
       onloaderror: (id: number, error: unknown) => {
         isLoading.value = false
         console.error('Failed to load track:', error)
+      },
+
+      onplayerror: (id: number, error: unknown) => {
+        isLoading.value = false
+        playState.value.isPlaying = false
+        stopTimeUpdates()
+        console.error('Failed to play track:', error)
       },
 
       onplay: () => {
@@ -186,7 +190,7 @@ export const usePlayerStore = defineStore('player', () => {
   function play() {
     audioUnlocked.value = true
     autoplayBlocked.value = false
-    if (howlInstance.value) {
+    if (howlInstance.value && !howlInstance.value.playing()) {
       howlInstance.value.play()
     }
   }
@@ -194,17 +198,24 @@ export const usePlayerStore = defineStore('player', () => {
   function pause() {
     if (howlInstance.value) {
       howlInstance.value.pause()
+      playState.value.isPlaying = false
+      broadcastState()
+      stopTimeUpdates()
     }
   }
 
   function stop() {
     if (howlInstance.value) {
       howlInstance.value.stop()
+      playState.value.isPlaying = false
+      playState.value.currentTime = 0
+      broadcastState()
+      stopTimeUpdates()
     }
   }
 
   function togglePlayPause() {
-    if (playState.value.isPlaying) {
+    if (howlInstance.value?.playing() || playState.value.isPlaying) {
       pause()
     } else {
       play()

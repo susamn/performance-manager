@@ -1261,8 +1261,7 @@ function onTrackSelected(track: Track) {
       ...track,
       url: track.url?.replace('/api/performances/', `/api/events/${eventId}/performances/`)
     }
-    playerStore.loadTrack(updatedTrack, true)
-    playerStore.play()
+    playerStore.loadTrack(updatedTrack)
   }
 }
 
