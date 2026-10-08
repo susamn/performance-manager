@@ -13,6 +13,10 @@ def client():
     # Use a temporary directory for tests
     with tempfile.TemporaryDirectory() as temp_dir:
         # Override config dir to use temp dir
+        original_config_dir = backend_app.CONFIG_DIR
+        original_events_file = backend_app.em.events_file
+        original_events = list(backend_app.em.events)
+
         backend_app.CONFIG_DIR = Path(temp_dir)
         backend_app.em.events_file = Path(temp_dir) / 'events.json'
         backend_app.em.events = []
@@ -20,6 +24,10 @@ def client():
         backend_app.app.config['TESTING'] = True
         with backend_app.app.test_client() as client:
             yield client
+
+        backend_app.CONFIG_DIR = original_config_dir
+        backend_app.em.events_file = original_events_file
+        backend_app.em.events = original_events
 
 def test_create_and_get_event(client):
     """Test that we can create an event and retrieve it."""
@@ -135,3 +143,35 @@ def test_socket_performer_auth():
         
         # Invalid token
         assert verify_live_token('bad.token.string', 'test-event-123') is False
+
+def test_delete_event_with_admin_pin(client):
+    """Test deleting an event using the admin PIN."""
+    import json
+    response = client.post('/api/events', json={
+        'name': 'Event to Delete',
+        'unlockCode': '4321',
+        'livePin': '9876'
+    })
+    assert response.status_code == 201
+    event_id = response.get_json()['id']
+
+    # Verify passcodes are stored in events.json
+    events_file = backend_app.em.events_file
+    with open(events_file, 'r') as f:
+        saved_events = json.load(f)
+    saved_event = next(e for e in saved_events if e['id'] == event_id)
+    assert saved_event['unlockCode'] == '4321'
+    assert saved_event['livePin'] == '9876'
+
+    # Try deleting with wrong admin PIN -> 401
+    fail_res = client.delete(f'/api/events/{event_id}', json={'unlockCode': 'wrong'})
+    assert fail_res.status_code == 401
+
+    # Delete with correct admin PIN -> 204
+    del_res = client.delete(f'/api/events/{event_id}', json={'unlockCode': '4321'})
+    assert del_res.status_code == 204
+
+    # Verify event is gone
+    get_res = client.get(f'/api/events/{event_id}')
+    assert get_res.status_code == 404
+

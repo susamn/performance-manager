@@ -37,26 +37,38 @@
               :event="event"
               :performance-count="getEventPerformanceCount(event)"
               @select="selectEvent"
-              @delete="deleteEvent"
+              @delete="confirmDeleteEvent"
               @download="downloadEventPDF"
             />
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Delete Event Modal with Admin PIN -->
+    <DeleteEventModal
+      v-if="eventToDelete"
+      :event="eventToDelete"
+      @close="eventToDelete = null"
+      @deleted="onEventDeleted"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useEventStore } from '@/stores/event'
+import { useDialogStore } from '@/stores/dialog'
 import AddEventForm from '@/components/AddEventForm.vue'
 import EventCard from '@/components/EventCard.vue'
+import DeleteEventModal from '@/components/DeleteEventModal.vue'
 import type { Event, Performance, Break } from '@/types'
 
 const router = useRouter()
 const eventStore = useEventStore()
+const dialogStore = useDialogStore()
+const eventToDelete = ref<Event | null>(null)
 
 const isLoading = computed(() => eventStore.isLoading)
 const sortedEvents = computed(() => eventStore.sortedEvents)
@@ -75,14 +87,12 @@ function selectEvent(event: Event) {
   router.push(`/events/${event.id}`)
 }
 
-async function deleteEvent(event: Event) {
-  if (confirm(`Are you sure you want to delete "${event.name}"? This will delete all performances and tracks within this event.`)) {
-    try {
-      await eventStore.deleteEvent(event.id)
-    } catch (error) {
-      alert('Failed to delete event. Please try again.')
-    }
-  }
+function confirmDeleteEvent(event: Event) {
+  eventToDelete.value = event
+}
+
+function onEventDeleted() {
+  eventToDelete.value = null
 }
 
 function getEventPerformanceCount(event: Event): number {
@@ -360,7 +370,7 @@ async function downloadEventPDF(event: Event) {
 
   } catch (error) {
     console.error('Error generating HTML report:', error)
-    alert('Failed to generate report. Please try again.')
+    await dialogStore.alert('Failed to generate report. Please try again.', 'Export Error', 'error')
   }
 }
 </script>

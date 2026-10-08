@@ -41,6 +41,8 @@ export interface Event {
   coverImage?: string | null
   imagePosition?: { x: number; y: number }
   liveEnabled?: boolean
+  unlockCode?: string
+  livePin?: string
 }
 
 export interface PlayState {

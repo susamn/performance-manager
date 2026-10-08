@@ -30,6 +30,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useEventStore } from '@/stores/event'
 import { usePlayerStore } from '@/stores/player'
+import { useDialogStore } from '@/stores/dialog'
 import PerformanceCard from './PerformanceCard.vue'
 import Sortable from 'sortablejs'
 import type { Performance, Track } from '@/types'
@@ -44,6 +45,7 @@ const emit = defineEmits<{
 
 const eventStore = useEventStore()
 const playerStore = usePlayerStore()
+const dialogStore = useDialogStore()
 
 const performanceContainer = ref<HTMLElement>()
 let sortable: Sortable | null = null
@@ -100,8 +102,17 @@ async function toggleDone(performance: Performance) {
 }
 
 async function deletePerformance(performance: Performance) {
-  if (confirm(`Are you sure you want to delete "${performance.name}"?`)) {
-    await eventStore.deletePerformance(props.eventId, performance.id)
+  const confirmed = await dialogStore.confirm(
+    `Are you sure you want to delete "${performance.name}"?`,
+    'Delete Performance',
+    { danger: true, confirmText: 'Delete' }
+  )
+  if (confirmed) {
+    try {
+      await eventStore.deletePerformance(props.eventId, performance.id)
+    } catch (error: any) {
+      await dialogStore.alert(error.message || 'Failed to delete performance.', 'Error', 'error')
+    }
   }
 }
 

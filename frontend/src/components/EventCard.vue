@@ -31,9 +31,21 @@
       {{ event.description }}
     </div>
 
-    <div class="flex items-center justify-between text-xs text-gray-400">
+    <div class="flex items-center justify-between text-xs text-gray-400 mb-2.5">
       <span>{{ performanceCount }} performance{{ performanceCount !== 1 ? 's' : '' }}</span>
       <span>{{ formatDate(event.createdAt) }}</span>
+    </div>
+
+    <!-- Passcode Badges in Config -->
+    <div class="pt-2 border-t border-gray-700/60 flex items-center justify-between text-xs" @click.stop>
+      <div class="flex items-center gap-1.5 text-gray-400" title="Admin Unlock Passcode">
+        <span class="text-amber-400 font-medium">Admin:</span>
+        <code class="bg-gray-800 border border-gray-700 px-1.5 py-0.5 rounded text-amber-300 font-mono text-[11px]">{{ event.unlockCode || '••••' }}</code>
+      </div>
+      <div class="flex items-center gap-1.5 text-gray-400" title="Liveness Endpoint PIN">
+        <span class="text-player-accent font-medium">Live PIN:</span>
+        <code class="bg-gray-800 border border-gray-700 px-1.5 py-0.5 rounded text-green-300 font-mono text-[11px]">{{ event.livePin || '••••' }}</code>
+      </div>
     </div>
   </div>
 </template>

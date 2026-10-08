@@ -116,6 +116,21 @@ class EventManager:
             try:
                 with open(self.events_file, 'r') as f:
                     self.events = json.load(f)
+                
+                # Ensure unlockCode and livePin exist on each event in events.json
+                modified = False
+                for event in self.events:
+                    event_dir = self.get_event_dir(event['id'])
+                    if 'unlockCode' not in event or not event['unlockCode']:
+                        code_file = event_dir / 'unlock_code'
+                        event['unlockCode'] = code_file.read_text().strip() if code_file.exists() else '12345'
+                        modified = True
+                    if 'livePin' not in event or not event['livePin']:
+                        pin_file = event_dir / 'live_pin'
+                        event['livePin'] = pin_file.read_text().strip() if pin_file.exists() else '0000'
+                        modified = True
+                if modified:
+                    self.save_events()
             except (json.JSONDecodeError, FileNotFoundError):
                 self.events = []
         else:
@@ -159,7 +174,9 @@ class EventManager:
             'breaks': [],
             'coverImage': None,
             'imagePosition': {'x': 50, 'y': 50},  # Default center position as percentages
-            'liveEnabled': True  # Default to live view enabled
+            'liveEnabled': True,  # Default to live view enabled
+            'unlockCode': unlock_code,
+            'livePin': live_pin
         }
 
         self.events.append(event)
@@ -404,11 +421,38 @@ class EventManager:
             return True
         return False
 
+    def get_event_unlock_code(self, event_id: str) -> Optional[str]:
+        """Get unlock code for an event"""
+        event = self.get_event(event_id)
+        if event and event.get('unlockCode'):
+            return str(event['unlockCode'])
+        code_file = self.get_event_dir(event_id) / 'unlock_code'
+        if code_file.exists():
+            return code_file.read_text().strip()
+        return None
+
+    def get_event_live_pin(self, event_id: str) -> Optional[str]:
+        """Get live PIN for an event"""
+        event = self.get_event(event_id)
+        if event and event.get('livePin'):
+            return str(event['livePin'])
+        pin_file = self.get_event_dir(event_id) / 'live_pin'
+        if pin_file.exists():
+            return pin_file.read_text().strip()
+        return None
+
     def update_event(self, event_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Update an event"""
         event = self.get_event(event_id)
         if event:
             event.update(updates)
+            event_dir = self.get_event_dir(event_id)
+            if 'unlockCode' in updates:
+                with open(event_dir / 'unlock_code', 'w') as f:
+                    f.write(str(updates['unlockCode']))
+            if 'livePin' in updates:
+                with open(event_dir / 'live_pin', 'w') as f:
+                    f.write(str(updates['livePin']))
             self.save_events()
             return event
         return None
@@ -566,9 +610,27 @@ def update_event(event_id: str):
     return jsonify({'error': 'Event not found or invalid updates'}), 404
 
 @app.route('/api/events/<event_id>', methods=['DELETE'])
-@require_auth
 def delete_event(event_id: str):
-    """Delete an event"""
+    """Delete an event (requires valid auth token OR correct unlockCode)"""
+    auth_header = request.headers.get('Authorization')
+    is_authorized = False
+
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+        if verify_auth_token(token, event_id):
+            is_authorized = True
+
+    if not is_authorized:
+        data = request.get_json(silent=True) or {}
+        unlock_code = data.get('unlockCode') or request.headers.get('X-Unlock-Code')
+        if unlock_code:
+            stored_code = em.get_event_unlock_code(event_id)
+            if stored_code and str(unlock_code).strip() == str(stored_code).strip():
+                is_authorized = True
+
+    if not is_authorized:
+        return jsonify({'error': 'Unauthorized: Incorrect admin PIN or missing authorization'}), 401
+
     if em.delete_event(event_id):
         return '', 204
     return jsonify({'error': 'Event not found'}), 404
@@ -584,18 +646,15 @@ def verify_unlock_code(event_id: str):
     if not data or 'unlockCode' not in data:
         return jsonify({'error': 'Unlock code is required'}), 400
 
-    # Read unlock code from file
-    unlock_code_file = em.get_event_dir(event_id) / 'unlock_code'
-    if not unlock_code_file.exists():
+    stored_code = em.get_event_unlock_code(event_id)
+    if not stored_code:
         # Create default unlock code file if it doesn't exist
+        unlock_code_file = em.get_event_dir(event_id) / 'unlock_code'
         with open(unlock_code_file, 'w') as f:
             f.write('12345')
         stored_code = '12345'
-    else:
-        with open(unlock_code_file, 'r') as f:
-            stored_code = f.read().strip()
 
-    if data['unlockCode'] == stored_code:
+    if str(data['unlockCode']).strip() == str(stored_code).strip():
         token = generate_auth_token(event_id)
         return jsonify({'success': True, 'token': token}), 200
     else:
@@ -614,16 +673,14 @@ def verify_live_pin(event_id: str):
     if not data or 'livePin' not in data:
         return jsonify({'error': 'Live PIN is required'}), 400
 
-    live_pin_file = em.get_event_dir(event_id) / 'live_pin'
-    if not live_pin_file.exists():
+    stored_code = em.get_event_live_pin(event_id)
+    if not stored_code:
+        live_pin_file = em.get_event_dir(event_id) / 'live_pin'
         with open(live_pin_file, 'w') as f:
             f.write('0000')
         stored_code = '0000'
-    else:
-        with open(live_pin_file, 'r') as f:
-            stored_code = f.read().strip()
 
-    if data['livePin'] == stored_code:
+    if str(data['livePin']).strip() == str(stored_code).strip():
         token = generate_live_token(event_id)
         return jsonify({'success': True, 'token': token}), 200
     else:

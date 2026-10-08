@@ -43,6 +43,19 @@
               <span class="hidden sm:inline">{{ event?.liveEnabled !== false ? 'Live: ON' : 'Live: OFF' }}</span>
             </button>
 
+            <!-- Passcodes (Admin & Live PIN) -->
+            <div v-if="event" class="hidden md:flex items-center gap-2 bg-gray-800/80 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs">
+              <div class="flex items-center gap-1.5" title="Admin Passcode">
+                <span class="text-amber-400 font-medium">Admin:</span>
+                <code class="font-mono text-amber-200 bg-gray-900 px-1 py-0.5 rounded text-[11px]">{{ event.unlockCode || '••••' }}</code>
+              </div>
+              <span class="text-gray-600">|</span>
+              <div class="flex items-center gap-1.5" title="Live Endpoint PIN">
+                <span class="text-player-accent font-medium">Live:</span>
+                <code class="font-mono text-green-200 bg-gray-900 px-1 py-0.5 rounded text-[11px]">{{ event.livePin || '••••' }}</code>
+              </div>
+            </div>
+
             <!-- Open Live View Button -->
             <a
               :href="`/events/${eventId}/live`"
@@ -550,6 +563,7 @@ import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useEventStore } from '@/stores/event'
 import { usePlayerStore } from '@/stores/player'
+import { useDialogStore } from '@/stores/dialog'
 import AddPerformanceForm from '@/components/AddPerformanceForm.vue'
 import PerformanceCard from '@/components/PerformanceCard.vue'
 import BreakCard from '@/components/BreakCard.vue'
@@ -562,6 +576,7 @@ import { socket } from '@/socket'
 const route = useRoute()
 const eventStore = useEventStore()
 const playerStore = usePlayerStore()
+const dialogStore = useDialogStore()
 
 // Player state references
 const playState = computed(() => playerStore.playState)
@@ -1081,10 +1096,20 @@ async function onPerformanceUpdated(updatedPerformance: Performance) {
 }
 
 async function deletePerformance(performance: Performance) {
-  if (confirm(`Are you sure you want to delete "${performance.name}" by ${performance.performer}?`)) {
-    await eventStore.deletePerformance(eventId, performance.id)
-    if (selectedPerformanceId.value === performance.id) {
-      eventStore.selectPerformance(null)
+  const perfLabel = performance.performer ? `"${performance.name}" by ${performance.performer}` : `"${performance.name}"`
+  const confirmed = await dialogStore.confirm(
+    `Are you sure you want to delete ${perfLabel}?`,
+    'Delete Performance',
+    { danger: true, confirmText: 'Delete' }
+  )
+  if (confirmed) {
+    try {
+      await eventStore.deletePerformance(eventId, performance.id)
+      if (selectedPerformanceId.value === performance.id) {
+        eventStore.selectPerformance(null)
+      }
+    } catch (error: any) {
+      await dialogStore.alert(error.message || 'Failed to delete performance. Please try again.', 'Error', 'error')
     }
   }
 }
@@ -1117,16 +1142,19 @@ async function toggleTrackCompletion(track: Track) {
     await eventStore.loadEventPerformances(eventId)
   } catch (error) {
     console.error('Error updating track completion:', error)
-    alert('Failed to update track completion. Please try again.')
+    await dialogStore.alert('Failed to update track completion. Please try again.', 'Error', 'error')
   }
 }
 
 async function deleteTrack(track: Track) {
   if (!selectedPerformanceId.value) return
 
-  if (!confirm(`Are you sure you want to delete "${track.filename}"?`)) {
-    return
-  }
+  const confirmed = await dialogStore.confirm(
+    `Are you sure you want to delete "${track.filename}"?`,
+    'Delete Track',
+    { danger: true, confirmText: 'Delete' }
+  )
+  if (!confirmed) return
 
   try {
     const response = await fetch(`/api/events/${eventId}/performances/${selectedPerformanceId.value}/tracks/${track.id}`, {
@@ -1140,7 +1168,7 @@ async function deleteTrack(track: Track) {
     await eventStore.loadEventPerformances(eventId)
   } catch (error) {
     console.error('Error deleting track:', error)
-    alert('Failed to delete track. Please try again.')
+    await dialogStore.alert('Failed to delete track. Please try again.', 'Error', 'error')
   }
 }
 

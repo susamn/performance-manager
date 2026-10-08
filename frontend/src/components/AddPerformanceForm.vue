@@ -147,6 +147,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useEventStore } from '@/stores/event'
+import { useDialogStore } from '@/stores/dialog'
 import type { Performance } from '@/types'
 
 const props = defineProps<{
@@ -158,6 +159,7 @@ const emit = defineEmits<{
 }>()
 
 const eventStore = useEventStore()
+const dialogStore = useDialogStore()
 
 const performanceName = ref('')
 const performerName = ref('')
@@ -240,7 +242,7 @@ async function handleSubmit() {
     clearForm()
   } catch (error) {
     console.error('Error creating performance:', error)
-    alert('Failed to create performance. Please try again.')
+    await dialogStore.alert('Failed to create performance. Please try again.', 'Create Failed', 'error')
   } finally {
     isCreating.value = false
   }

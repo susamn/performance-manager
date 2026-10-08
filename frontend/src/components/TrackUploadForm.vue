@@ -63,6 +63,7 @@
 
 <script setup lang="ts">
 import { useEventStore } from '@/stores/event'
+import { useDialogStore } from '@/stores/dialog'
 import { ref } from 'vue'
 
 const props = defineProps<{
@@ -73,6 +74,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   tracksUploaded: []
 }>()
+
+const dialogStore = useDialogStore()
 
 const performerName = ref('')
 const selectedFiles = ref<File[]>([])
@@ -100,7 +103,7 @@ async function uploadFiles() {
     emit('tracksUploaded')
   } catch (error) {
     console.error('Error uploading tracks:', error)
-    alert('Failed to upload tracks. Please try again.')
+    await dialogStore.alert('Failed to upload tracks. Please try again.', 'Upload Failed', 'error')
   } finally {
     isUploading.value = false
   }

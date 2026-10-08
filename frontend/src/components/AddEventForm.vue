@@ -115,12 +115,15 @@
 
 <script setup lang="ts">
 import { useEventStore } from '@/stores/event'
+import { useDialogStore } from '@/stores/dialog'
 import { ref } from 'vue'
 import type { Event } from '@/types'
 
 const emit = defineEmits<{
   eventCreated: [event: Event]
 }>()
+
+const dialogStore = useDialogStore()
 
 const eventName = ref('')
 const eventDescription = ref('')
@@ -183,7 +186,7 @@ async function handleSubmit() {
     clearForm()
   } catch (error) {
     console.error('Error creating event:', error)
-    alert('Failed to create event. Please try again.')
+    await dialogStore.alert('Failed to create event. Please try again.', 'Create Failed', 'error')
   } finally {
     isCreating.value = false
   }

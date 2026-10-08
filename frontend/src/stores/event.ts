@@ -94,12 +94,22 @@ export const useEventStore = defineStore('event', () => {
     }
   }
 
-  async function deleteEvent(eventId: string) {
+  async function deleteEvent(eventId: string, unlockCode?: string) {
     try {
-      const response = await fetch(`/api/events/${eventId}`, { method: 'DELETE',
-        headers: getAuthHeaders(eventId),
-      })
-      if (!response.ok) throw new Error('Failed to delete event')
+      const headers = getAuthHeaders(eventId)
+      const options: RequestInit = {
+        method: 'DELETE',
+        headers,
+      }
+      if (unlockCode) {
+        headers['Content-Type'] = 'application/json'
+        options.body = JSON.stringify({ unlockCode: unlockCode.trim() })
+      }
+      const response = await fetch(`/api/events/${eventId}`, options)
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to delete event')
+      }
       events.value = events.value.filter(e => e.id !== eventId)
       if (selectedEvent.value?.id === eventId) {
         selectedEvent.value = null

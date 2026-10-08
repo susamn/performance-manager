@@ -131,6 +131,7 @@
 
 <script setup lang="ts">
 import { useEventStore } from '@/stores/event'
+import { useDialogStore } from '@/stores/dialog'
 import { ref, watch } from 'vue'
 import type { Performance, Track } from '@/types'
 
@@ -151,6 +152,7 @@ const selectedNewTracks = ref<File[]>([])
 const tracksToReplace = ref<Map<string, File>>(new Map())
 const tracksToRemove = ref<Set<string>>(new Set())
 const isSaving = ref(false)
+const dialogStore = useDialogStore()
 
 // Watch for prop changes to reset form
 watch(() => props.performance, (newPerformance) => {
@@ -276,7 +278,7 @@ async function handleSubmit() {
     closeModal()
   } catch (error) {
     console.error('Error updating performance:', error)
-    alert('Failed to update performance. Please try again.')
+    await dialogStore.alert('Failed to update performance. Please try again.', 'Update Failed', 'error')
   } finally {
     isSaving.value = false
   }
