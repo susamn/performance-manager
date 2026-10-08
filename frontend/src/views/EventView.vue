@@ -81,6 +81,43 @@
               @change="onJsonFileSelected"
             />
 
+            <!-- Export Options Dropdown -->
+            <div class="relative group">
+              <button
+                class="px-3.5 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 hover:text-white border border-gray-600 rounded-lg flex items-center space-x-2 transition-colors text-sm"
+                title="Export Event Schedule (Program HTML or JSON)"
+              >
+                <svg class="w-4 h-4 text-player-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <span class="hidden sm:inline">Export</span>
+                <svg class="w-3.5 h-3.5 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              <div class="absolute right-0 mt-1 w-44 bg-gray-800 border border-gray-700 rounded-lg shadow-xl py-1 hidden group-hover:block z-50">
+                <button
+                  @click="exportEventProgram"
+                  class="w-full px-4 py-2 text-left text-xs text-gray-200 hover:bg-gray-700 hover:text-player-accent flex items-center gap-2"
+                >
+                  <svg class="w-4 h-4 text-player-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span>Program (HTML)</span>
+                </button>
+                <button
+                  @click="exportEventJson"
+                  class="w-full px-4 py-2 text-left text-xs text-gray-200 hover:bg-gray-700 hover:text-player-accent flex items-center gap-2"
+                >
+                  <svg class="w-4 h-4 text-player-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span>Performances (JSON)</span>
+                </button>
+              </div>
+            </div>
+
             <!-- Lock Toggle Button -->
             <div class="relative">
             <button
@@ -593,6 +630,7 @@ import BreakCard from '@/components/BreakCard.vue'
 import MediaPlayer from '@/components/MediaPlayer.vue'
 import EditPerformanceModal from '@/components/EditPerformanceModal.vue'
 import ImportPerformancesModal from '@/components/ImportPerformancesModal.vue'
+import { downloadEventProgram, downloadEventJson } from '@/utils/export'
 import Sortable from 'sortablejs'
 import type { Performance, Track } from '@/types'
 import { socket } from '@/socket'
@@ -1091,6 +1129,16 @@ async function executeImport() {
   }
 }
 
+function exportEventProgram() {
+  if (!event.value) return
+  downloadEventProgram(event.value, sortedPerformances.value)
+}
+
+function exportEventJson() {
+  if (!event.value) return
+  downloadEventJson(event.value, sortedPerformances.value)
+}
+
 async function onPerformanceCreated(performance: Performance) {
   // Calculate the order for the new performance (after all existing active items)
   const allItems = [...sortedItems.value.active, ...sortedItems.value.completed]
@@ -1213,7 +1261,8 @@ function onTrackSelected(track: Track) {
       ...track,
       url: track.url?.replace('/api/performances/', `/api/events/${eventId}/performances/`)
     }
-    playerStore.loadTrack(updatedTrack)
+    playerStore.loadTrack(updatedTrack, true)
+    playerStore.play()
   }
 }
 

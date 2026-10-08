@@ -36,16 +36,16 @@
             <p class="text-sm text-gray-300 truncate">by {{ performance.performer }}</p>
             <div class="flex items-center gap-2 mt-1 flex-wrap">
               <span
-                class="px-2 py-0.5 rounded-full text-xs font-medium border"
-                :style="getTypeStyle(performance.type)"
+                class="px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide border"
+                :style="getTypeStyle(performance.type || 'Song')"
               >
-                {{ performance.type }}
+                {{ performance.type || 'Song' }}
               </span>
               <span
                 class="px-2 py-0.5 rounded-full text-xs font-medium border"
-                :style="getModeStyle(performance.mode)"
+                :style="getModeStyle(performance.mode || 'Solo')"
               >
-                {{ performance.mode }}
+                {{ performance.mode || 'Solo' }}
               </span>
               <span class="text-xs text-gray-400">
                 {{ performance.tracks.length === 0 ? 'No tracks' : `${performance.tracks.length} track${performance.tracks.length !== 1 ? 's' : ''}` }}

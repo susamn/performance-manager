@@ -82,7 +82,7 @@ export const usePlayerStore = defineStore('player', () => {
     }
   }
 
-  function loadTrack(track: Track) {
+  function loadTrack(track: Track, autoPlay = false) {
     if (!track.url) return
 
     // Clean up previous instance
@@ -106,7 +106,7 @@ export const usePlayerStore = defineStore('player', () => {
       src: [track.url],
       html5: true,          // Force HTML5 for streaming
       preload: 'metadata',  // Only load metadata initially
-      format: ['mp3', 'mp4', 'aac', 'm4a', 'wav', 'flac', 'wma'],
+      format: ['mp3', 'mp4', 'aac', 'm4a', 'wav', 'flac', 'wma', 'mpeg', 'ogg', 'opus'],
       volume: 1.0,
 
       // Event handlers
@@ -118,6 +118,9 @@ export const usePlayerStore = defineStore('player', () => {
           broadcastState()
         }
         console.log('Track loaded successfully (streaming ready)')
+        if (autoPlay) {
+          play()
+        }
       },
 
       onloaderror: (id: number, error: unknown) => {
@@ -181,10 +184,8 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function play() {
-    if (!audioUnlocked.value) {
-      autoplayBlocked.value = true
-      console.warn('Autoplay blocked by browser. User interaction required.')
-    }
+    audioUnlocked.value = true
+    autoplayBlocked.value = false
     if (howlInstance.value) {
       howlInstance.value.play()
     }

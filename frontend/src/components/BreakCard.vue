@@ -28,13 +28,23 @@
       </div>
 
       <!-- Break Info -->
-      <div class="flex-1 min-w-0 text-center" :class="disabled ? 'cursor-not-allowed' : 'cursor-pointer'" @click="!disabled && $emit('select', breakItem)">
-        <h4 class="text-lg font-medium text-white mb-1">{{ breakItem.name }}</h4>
-        <div class="flex items-center justify-center gap-3 text-sm text-gray-400">
-          <span class="px-2 py-1 bg-blue-600/20 text-blue-300 rounded">{{ breakItem.type }}</span>
-          <span>{{ formatDate(breakItem.createdAt) }}</span>
-          <span :class="breakItem.isDone ? 'text-green-400' : 'text-yellow-400'">
-            {{ breakItem.isDone ? 'Completed' : 'Pending' }}
+      <div class="flex-1 min-w-0" :class="disabled ? 'cursor-not-allowed' : 'cursor-pointer'" @click="!disabled && $emit('select', breakItem)">
+        <h4 class="text-base font-semibold text-white truncate">{{ breakItem.name }}</h4>
+        <div class="flex items-center gap-2 mt-1 flex-wrap">
+          <span class="px-2 py-0.5 rounded-full text-xs font-semibold border bg-amber-400/15 border-amber-400/40 text-amber-300">
+            Break
+          </span>
+          <span class="px-2 py-0.5 rounded-full text-xs font-medium border bg-fuchsia-400/15 border-fuchsia-400/40 text-fuchsia-300">
+            {{ breakItem.type || 'Break' }}
+          </span>
+          <span v-if="breakItem.expectedDuration" class="text-xs text-gray-400">
+            {{ breakItem.expectedDuration }}m
+          </span>
+          <span class="text-xs text-gray-400">
+            {{ formatDate(breakItem.createdAt) }}
+          </span>
+          <span :class="breakItem.isDone ? 'text-green-400' : 'text-yellow-400'" class="text-xs font-medium">
+            {{ breakItem.isDone ? '✓ Completed' : '○ Pending' }}
           </span>
         </div>
       </div>

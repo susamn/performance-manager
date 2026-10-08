@@ -6,6 +6,7 @@ import uuid
 import shutil
 import random
 import string
+import mimetypes
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Any, Optional
@@ -115,7 +116,7 @@ def get_event_state(event_id):
 
 # Configuration
 CONFIG_DIR = Path.home() / '.config' / 'performance-manager'
-ALLOWED_EXTENSIONS = {'mp3', 'mp4', 'aac', 'm4a', 'wav', 'flac'}
+ALLOWED_EXTENSIONS = {'mp3', 'mp4', 'aac', 'm4a', 'wav', 'flac', 'mpeg', 'wma', 'ogg', 'opus'}
 ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
 
 # Ensure config directory exists
@@ -407,6 +408,25 @@ class EventManager:
                 duration = t_item.get('duration')
                 url = t_item.get('url') or (f"/api/events/{event_id}/performances/{perf_id}/files/{filename}" if filename else None)
                 is_completed = bool(t_item.get('isCompleted', False))
+
+                # Auto-link track file into performance directory if found
+                if filename:
+                    target_file = perf_dir / filename
+                    if not target_file.exists():
+                        found_source = None
+                        if t_item.get('path') and Path(t_item['path']).exists():
+                            found_source = Path(t_item['path'])
+                        else:
+                            music_dir = Path.home() / 'Music'
+                            if music_dir.exists():
+                                matches = list(music_dir.glob(f"**/{filename}"))
+                                if matches:
+                                    found_source = matches[0]
+                        if found_source:
+                            try:
+                                target_file.symlink_to(found_source)
+                            except Exception:
+                                pass
 
                 tracks.append({
                     'id': track_id,
@@ -954,9 +974,12 @@ def upload_event_track(event_id: str, performance_id: str):
 
     return jsonify({'error': 'Failed to add track'}), 500
 
-@app.route('/api/events/<event_id>/performances/<performance_id>/files/<filename>')
+@app.route('/api/events/<event_id>/performances/<performance_id>/files/<path:filename>')
 def serve_event_track_file(event_id: str, performance_id: str, filename: str):
     """Serve audio files with range support for streaming"""
+    if '..' in filename:
+        return jsonify({'error': 'Invalid filename'}), 400
+
     event = em.get_event(event_id)
     if not event:
         return jsonify({'error': 'Event not found'}), 404
@@ -965,15 +988,64 @@ def serve_event_track_file(event_id: str, performance_id: str, filename: str):
     if not performance:
         return jsonify({'error': 'Performance not found'}), 404
 
-    file_path = em.get_performance_dir(event_id, performance_id) / secure_filename(filename)
+    perf_dir = em.get_performance_dir(event_id, performance_id)
+
+    # 1. Try exact filename in performance directory
+    file_path = perf_dir / filename
+
+    # 2. Try secure_filename in performance directory
+    if not file_path.exists():
+        file_path = perf_dir / secure_filename(filename)
+
+    # 3. Check track's stored path from performance tracks list
+    if not file_path.exists():
+        for t in performance.get('tracks', []):
+            if t.get('filename') == filename and t.get('path'):
+                p = Path(t['path'])
+                if p.exists() and p.is_file():
+                    file_path = p
+                    break
+
+    # 4. Check if file is in event's audioFolder
+    if not file_path.exists():
+        audio_folder = event.get('audioFolder')
+        if audio_folder:
+            candidate = Path(audio_folder) / filename
+            if candidate.exists() and candidate.is_file():
+                file_path = candidate
+
+    # 5. Search ~/Music for filename
+    if not file_path.exists():
+        music_dir = Path.home() / 'Music'
+        if music_dir.exists():
+            matches = list(music_dir.glob(f"**/{filename}"))
+            if matches:
+                file_path = matches[0]
 
     if not file_path.exists():
         return jsonify({'error': 'File not found'}), 404
 
+    # Determine correct Content-Type
+    mime_type, _ = mimetypes.guess_type(str(file_path))
+    if not mime_type or not mime_type.startswith('audio'):
+        ext = file_path.suffix.lower()
+        if ext in ['.mp3']:
+            mime_type = 'audio/mpeg'
+        elif ext in ['.m4a', '.mp4']:
+            mime_type = 'audio/mp4'
+        elif ext in ['.wav']:
+            mime_type = 'audio/wav'
+        elif ext in ['.flac']:
+            mime_type = 'audio/flac'
+        elif ext in ['.mpeg', '.mpg']:
+            mime_type = 'audio/mpeg'
+        else:
+            mime_type = 'audio/mpeg'
+
     # Handle range requests for audio streaming
     range_header = request.headers.get('Range', None)
     if not range_header:
-        return send_file(file_path)
+        return send_file(file_path, mimetype=mime_type)
 
     # Parse range header
     byte_start = 0
@@ -1003,7 +1075,7 @@ def serve_event_track_file(event_id: str, performance_id: str, filename: str):
                       "Content-Range": f"bytes {byte_start}-{byte_end}/{file_size}",
                       "Accept-Ranges": "bytes",
                       "Content-Length": str(chunk_size),
-                      "Content-Type": "audio/mpeg",
+                      "Content-Type": mime_type,
                   }
                   )
     return rv
