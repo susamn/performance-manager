@@ -296,7 +296,7 @@
         </div>
 
         <!-- Main Performance Cards -->
-        <div class="lg:col-span-2 flex flex-col h-[calc(100vh-120px)]">
+        <div class="lg:col-span-2 flex flex-col h-[calc(200vh-240px)]">
           <!-- Unified Event Progress & Performance Info Card -->
           <div class="mb-4 bg-gradient-to-r from-gray-800 to-gray-700 border border-player-accent/30 rounded-lg p-4">
             
@@ -326,6 +326,21 @@
                       <span class="text-gray-500">Duration</span>
                       <span class="font-medium text-white">{{ formatDuration(selectedPerformance.expectedDuration) }}</span>
                     </div>
+                    <label
+                      v-if="selectedPerformance.tracks && selectedPerformance.tracks.length > 0"
+                      class="flex items-center gap-1.5 cursor-pointer text-xs select-none bg-gray-700/50 px-2 py-1 rounded border border-gray-600 hover:border-gray-500 transition-colors ml-auto"
+                      title="Continuous play with 10-second overlap"
+                    >
+                      <input
+                        type="checkbox"
+                        :checked="playerStore.isContinuousPlay(selectedPerformance.id)"
+                        @change="playerStore.toggleContinuousPlay(selectedPerformance.id)"
+                        class="rounded bg-gray-800 border-gray-500 text-player-accent focus:ring-0 w-3.5 h-3.5 cursor-pointer"
+                      />
+                      <span class="text-xs" :class="playerStore.isContinuousPlay(selectedPerformance.id) ? 'text-player-accent font-semibold' : 'text-gray-300'">
+                        Continuous Play
+                      </span>
+                    </label>
                   </div>
                 </template>
                 
@@ -453,6 +468,7 @@
                         :performance="item"
                         :is-selected="selectedPerformanceId === item.id"
                         :disabled="lockState === 'locked' || !!(selectedPerformanceId && selectedPerformanceId !== item.id)"
+                        :is-continuous-play="playerStore.isContinuousPlay(item.id)"
                         @select="(p) => lockState !== 'locked' && selectPerformance(p)"
                         @toggle-done="(p) => lockState !== 'locked' && toggleDone(p)"
                         @edit="(p) => lockState === 'unlocked' && editPerformance(p)"
@@ -460,6 +476,7 @@
                         @track-selected="(t) => lockState !== 'locked' && onTrackSelected(t)"
                         @toggle-track-completion="(t) => lockState !== 'locked' && toggleTrackCompletion(t)"
                         @delete-track="(t) => lockState === 'unlocked' && deleteTrack(t)"
+                        @toggle-continuous-play="(id) => playerStore.toggleContinuousPlay(id)"
                         class="performance-card-item"
                         :data-id="item.id"
                       />
@@ -489,6 +506,7 @@
                         :performance="item"
                         :is-selected="false"
                         :disabled="lockState === 'locked'"
+                        :is-continuous-play="playerStore.isContinuousPlay(item.id)"
                         @select="(p) => lockState !== 'locked' && selectPerformance(p)"
                         @toggle-done="(p) => lockState !== 'locked' && toggleDone(p)"
                         @edit="(p) => lockState === 'unlocked' && editPerformance(p)"
@@ -496,6 +514,7 @@
                         @track-selected="(t) => lockState !== 'locked' && onTrackSelected(t)"
                         @toggle-track-completion="(t) => lockState !== 'locked' && toggleTrackCompletion(t)"
                         @delete-track="(t) => lockState === 'unlocked' && deleteTrack(t)"
+                        @toggle-continuous-play="(id) => playerStore.toggleContinuousPlay(id)"
                         class="performance-card-item completed-item"
                         :data-id="item.id"
                       />
@@ -1261,7 +1280,8 @@ function onTrackSelected(track: Track) {
       ...track,
       url: track.url?.replace('/api/performances/', `/api/events/${eventId}/performances/`)
     }
-    playerStore.loadTrack(updatedTrack)
+    // Do not auto-start on song selection, even if continuous play is enabled
+    playerStore.loadTrack(updatedTrack, false, selectedPerformanceId.value)
   }
 }
 

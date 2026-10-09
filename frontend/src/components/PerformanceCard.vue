@@ -53,6 +53,23 @@
               <span class="text-xs text-gray-400">
                 {{ formatDate(performance.createdAt) }}
               </span>
+              <!-- Autoplay Checkbox in Card Header -->
+              <label
+                v-if="performance.type !== 'Break' && performance.tracks && performance.tracks.length > 0"
+                class="flex items-center gap-1 cursor-pointer text-xs select-none px-1.5 py-0.5 rounded bg-gray-800/70 border border-gray-700 hover:border-gray-500 transition-colors"
+                @click.stop
+                title="Continuously play tracks with 10-second overlap"
+              >
+                <input
+                  type="checkbox"
+                  :checked="isContinuousPlay"
+                  @change.stop="$emit('toggleContinuousPlay', performance.id)"
+                  class="rounded bg-gray-800 border-gray-500 text-player-accent focus:ring-0 w-3 h-3 cursor-pointer"
+                />
+                <span class="text-[11px]" :class="isContinuousPlay ? 'text-player-accent font-medium' : 'text-gray-400'">
+                  Autoplay
+                </span>
+              </label>
             </div>
           </div>
         </div>
@@ -128,7 +145,24 @@
 
       <!-- Expanded Track List (shown when selected) -->
       <div v-if="isSelected && performance.tracks.length > 0" class="mt-4 pt-4 border-t border-gray-600">
-        <div class="text-sm text-gray-400 mb-2">Tracks:</div>
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-sm text-gray-400">Tracks:</div>
+          <label
+            class="flex items-center gap-1.5 cursor-pointer text-xs select-none bg-gray-700/60 px-2 py-0.5 rounded border border-gray-600 hover:border-gray-500 transition-colors"
+            @click.stop
+            title="Continuously play tracks with 10-second overlap"
+          >
+            <input
+              type="checkbox"
+              :checked="isContinuousPlay"
+              @change.stop="$emit('toggleContinuousPlay', performance.id)"
+              class="rounded bg-gray-800 border-gray-500 text-player-accent focus:ring-0 w-3.5 h-3.5 cursor-pointer"
+            />
+            <span class="text-xs" :class="isContinuousPlay ? 'text-player-accent font-semibold' : 'text-gray-300'">
+              Continuous Play (10s overlap)
+            </span>
+          </label>
+        </div>
         <div class="max-h-40 overflow-y-auto space-y-1">
           <div
             v-for="track in performance.tracks"
@@ -193,6 +227,7 @@ defineProps<{
   performance: Performance
   isSelected: boolean
   disabled?: boolean
+  isContinuousPlay?: boolean
 }>()
 
 defineEmits<{
@@ -203,6 +238,7 @@ defineEmits<{
   trackSelected: [track: Track]
   toggleTrackCompletion: [track: Track]
   deleteTrack: [track: Track]
+  toggleContinuousPlay: [performanceId: string]
 }>()
 
 function formatDate(dateString: string): string {
