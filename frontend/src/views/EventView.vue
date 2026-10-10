@@ -1,11 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-900 text-white">
-    <!-- Autoplay Blocked Alert -->
-    <div v-if="playerStore.autoplayBlocked" class="bg-red-500 text-white p-4 text-center cursor-pointer font-bold animate-pulse" @click="playerStore.autoplayBlocked = false">
-      ⚠️ AUDIO AUTOPLAY BLOCKED BY BROWSER ⚠️<br>
-      <span class="text-sm font-normal">Click anywhere on this red banner to unlock audio playback.</span>
-    </div>
-
     <!-- Header -->
     <div class="sticky top-0 bg-gray-800 border-b border-gray-700 z-10">
       <div class="max-w-7xl mx-auto px-4 py-4">
@@ -1008,6 +1002,7 @@ function getTypeStyle(type: string): { backgroundColor: string; borderColor: str
 onMounted(async () => {
   if (eventId) {
     await eventStore.selectEvent(eventId)
+    await playerStore.initialize(eventId)
   }
   document.addEventListener('keydown', handleKeydown)
 })
@@ -1276,12 +1271,8 @@ function onTrackSelected(track: Track) {
   // Only play tracks from the selected performance
   if (selectedPerformanceId.value) {
     playerStore.playState.currentEventId = eventId
-    const updatedTrack = {
-      ...track,
-      url: track.url?.replace('/api/performances/', `/api/events/${eventId}/performances/`)
-    }
-    // Do not auto-start on song selection, even if continuous play is enabled
-    playerStore.loadTrack(updatedTrack, false, selectedPerformanceId.value)
+    // Loading into MPD never starts playback; Play remains a separate action.
+    void playerStore.loadTrack(track, false, selectedPerformanceId.value)
   }
 }
 
@@ -1388,7 +1379,7 @@ async function handleImageClick(event: MouseEvent) {
 function handleKeydown(event: KeyboardEvent) {
   if (event.code === 'Space' && event.target === document.body) {
     event.preventDefault()
-    // Media player will handle this through the player store
+    playerStore.handleSpaceKey()
   }
 }
 </script>

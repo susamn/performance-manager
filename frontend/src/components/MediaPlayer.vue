@@ -26,10 +26,10 @@
       <!-- Loading indicator -->
       <div v-if="isLoading" class="mt-2 flex items-center gap-2">
         <div class="w-4 h-4 border-2 border-player-accent border-t-transparent rounded-full animate-spin"></div>
-        <span class="text-xs text-gray-400">Preparing stream... {{ formattedLoadProgress }}</span>
+        <span class="text-xs text-gray-400">Loading track into MPD...</span>
       </div>
       <div v-else class="mt-1">
-        <span class="text-xs text-green-400">✓ Ready to stream</span>
+        <span class="text-xs text-green-400">✓ Ready on this machine</span>
       </div>
     </div>
 
@@ -92,7 +92,8 @@
     <!-- Instructions -->
     <div class="mt-4 text-xs text-gray-500 text-center">
       <p>Space: Play/Pause • Space x2: Stop & Reset</p>
-      <p class="mt-1 text-green-400">🎵 Streaming enabled</p>
+      <p class="mt-1 text-green-400">🎵 Audio plays through this machine (MPD)</p>
+      <p v-if="playerStore.error" role="alert" class="mt-2 text-red-400">{{ playerStore.error }}</p>
     </div>
   </div>
 </template>
@@ -116,8 +117,6 @@ const isLoading = computed(() => playerStore.isLoading)
 const progress = computed(() => playerStore.progress)
 const formattedCurrentTime = computed(() => playerStore.formattedCurrentTime)
 const formattedDuration = computed(() => playerStore.formattedDuration)
-const formattedLoadProgress = computed(() => playerStore.formattedLoadProgress)
-const howlInstance = computed(() => playerStore.howlInstance)
 
 function togglePlayPause() {
   playerStore.togglePlayPause()

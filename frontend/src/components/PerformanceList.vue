@@ -56,6 +56,7 @@ const selectedPerformanceId = computed(() => eventStore.selectedPerformanceId)
 
 onMounted(() => {
   eventStore.loadEventPerformances(props.eventId)
+  void playerStore.initialize(props.eventId)
   initializeSortable()
 })
 
@@ -117,12 +118,7 @@ async function deletePerformance(performance: Performance) {
 }
 
 function onTrackSelected(track: Track) {
-  // Update the track URL to include event ID
-  const updatedTrack = {
-    ...track,
-    url: track.url?.replace('/api/performances/', `/api/events/${props.eventId}/performances/`)
-  }
-  playerStore.loadTrack(updatedTrack)
+  void playerStore.loadTrack(track, false, selectedPerformanceId.value || undefined)
 }
 </script>
 

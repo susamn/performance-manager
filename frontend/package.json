@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@vueuse/core": "^10.7.0",
-    "howler": "^2.2.4",
     "pinia": "^2.1.0",
     "socket.io-client": "^4.8.3",
     "sortablejs": "^1.15.0",
@@ -24,7 +23,6 @@
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.0",
-    "@types/howler": "^2.2.13",
     "@types/sortablejs": "^1.15.0",
     "@vitejs/plugin-vue": "^5.0.0",
     "@vitest/ui": "^1.0.0",

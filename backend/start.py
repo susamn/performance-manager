@@ -36,6 +36,7 @@ def setup_venv():
 
 def start_server(port=5000, external=False):
     print("Setting up Performance Manager...")
+    started_here = False
 
     if external:
         import socket
@@ -120,6 +121,7 @@ def start_server(port=5000, external=False):
             print(f"📝 Logs: tail -f {log_file}")
 
             # Wait for process to complete
+            started_here = True
             process.wait()
 
     except KeyboardInterrupt:
@@ -127,15 +129,20 @@ def start_server(port=5000, external=False):
     except Exception as e:
         print(f"❌ Error: {e}")
     finally:
-        # Clean up PID and port files
+        # The detached MPD instance must not keep playing after the app stops.
         config_dir = Path.home() / ".config" / "performance-manager"
+        if started_here:
+            from mpd_player import MPDPlayer
+            MPDPlayer(config_dir).shutdown()
+        # Clean up PID and port files
         pid_file = config_dir / "performance-manager.pid"
         port_file = config_dir / ".port"
 
-        if pid_file.exists():
-            pid_file.unlink()
-        if port_file.exists():
-            port_file.unlink()
+        if started_here:
+            if pid_file.exists():
+                pid_file.unlink()
+            if port_file.exists():
+                port_file.unlink()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Start Performance Manager")

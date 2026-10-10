@@ -23,6 +23,7 @@ from mutagen import File as MutagenFile
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from functools import wraps
 import secrets
+from mpd_player import MPDPlayer, MPDError
 
 app = Flask(__name__)
 CORS(app)
@@ -121,6 +122,40 @@ ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
 
 # Ensure config directory exists
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+mpd_player = MPDPlayer(CONFIG_DIR)
+player_watch_started = False
+
+
+def publish_player_state():
+    state = mpd_player.state()
+    event_id = state['eventId']
+    if event_id:
+        get_event_state(event_id)['playState'] = state['playState']
+        socketio.emit('play_state_updated', {
+            'eventId': event_id, 'playState': state['playState'], 'error': state.get('error')
+        })
+    return state
+
+
+def watch_player():
+    last = None
+    while True:
+        try:
+            state = mpd_player.state()
+            if state['eventId'] and state != last:
+                publish_player_state()
+            last = state
+        except MPDError:
+            logging.exception('MPD status polling failed')
+        socketio.sleep(0.25)
+
+
+def start_player_watch():
+    global player_watch_started
+    if not player_watch_started:
+        player_watch_started = True
+        socketio.start_background_task(watch_player)
+
 
 class EventManager:
     def __init__(self):
@@ -1419,6 +1454,87 @@ def serve_static(path):
         return send_file(file_path)
     return serve_frontend()  # Fallback to index.html for SPA routing
 
+def load_mpd_track(event_id, performance_id, track_id, continuous=False):
+    performance = em.get_performance(event_id, performance_id)
+    event = em.get_event(event_id)
+    if not event or not performance or performance.get('type') == 'Break':
+        raise MPDError('Performance not found')
+    tracks = performance.get('tracks', [])
+    selected = next((i for i, track in enumerate(tracks) if track['id'] == track_id), None)
+    if selected is None:
+        raise MPDError('Track not found in performance')
+
+    resolved = []
+    for track in tracks:
+        filename = track['filename']
+        candidates = [em.get_performance_dir(event_id, performance_id) / filename]
+        if track.get('path'):
+            candidates.append(Path(track['path']))
+        if event.get('audioFolder'):
+            candidates.append(Path(event['audioFolder']) / filename)
+        path = next((p.resolve() for p in candidates if p.is_file()), None)
+        if path is None:
+            # Matches the fallback of the existing file-serving endpoint.
+            matches = list((Path.home() / 'Music').glob(f'**/{filename}'))
+            path = matches[0].resolve() if matches else None
+        if path is None:
+            raise MPDError(f'Audio file missing: {filename}')
+        resolved.append((track, path))
+    state = mpd_player.load(event_id, performance_id, resolved, selected, continuous)
+    start_player_watch()
+    publish_player_state()
+    return state
+
+
+@app.route('/api/events/<event_id>/player/state')
+def get_player_state(event_id):
+    if not em.get_event(event_id):
+        return jsonify({'error': 'Event not found'}), 404
+    state = mpd_player.state()
+    if state['eventId'] == event_id and not state.get('error'):
+        start_player_watch()
+    if state['eventId'] != event_id:
+        return jsonify({'eventId': event_id, 'track': None, 'playState': {
+            'isPlaying': False, 'currentTime': 0, 'duration': 0,
+            'currentEventId': event_id, 'currentTrackId': None
+        }})
+    return jsonify(state)
+
+
+@app.route('/api/events/<event_id>/player/load', methods=['POST'])
+@require_auth
+def load_player_track(event_id):
+    data = request.get_json(silent=True) or {}
+    try:
+        return jsonify(load_mpd_track(event_id, data.get('performanceId'),
+                                       data.get('trackId'), bool(data.get('continuous'))))
+    except MPDError as exc:
+        return jsonify({'error': str(exc)}), 400
+
+
+@app.route('/api/events/<event_id>/player/control', methods=['POST'])
+@require_auth
+def control_player(event_id):
+    data = request.get_json(silent=True) or {}
+    try:
+        result = mpd_player.control(event_id, data.get('action'), data.get('percentage'))
+        publish_player_state()
+        return jsonify(result)
+    except MPDError as exc:
+        return jsonify({'error': str(exc)}), 400
+
+
+@app.route('/api/events/<event_id>/player/continuous', methods=['POST'])
+@require_auth
+def configure_player(event_id):
+    data = request.get_json(silent=True) or {}
+    try:
+        return jsonify(mpd_player.set_continuous(event_id, data.get('performanceId'),
+                                                 bool(data.get('enabled'))))
+    except MPDError as exc:
+        return jsonify({'error': str(exc)}), 400
+
+
 # --- WebSockets ---
 @socketio.on('connect')
 def handle_connect():
@@ -1432,6 +1548,8 @@ def handle_request_live_state(data):
     """Client specifically requests the state for an event"""
     event_id = data.get('eventId')
     if event_id:
+        if mpd_player.event_id == event_id:
+            get_event_state(event_id)['playState'] = mpd_player.state()['playState']
         emit('active_live_state', get_event_state(event_id))
 
 @socketio.on('admin_set_active_performance')
@@ -1444,25 +1562,10 @@ def handle_admin_set_active_performance(data):
     state['eventName'] = data.get('eventName')
     state['performance'] = data.get('performance')
     
-    # Reset play state when performance changes
-    state['playState'] = {
-        'isPlaying': False,
-        'currentTime': 0,
-        'duration': 0,
-        'currentTrackId': None
-    }
+    # MPD is authoritative; changing the live performance must not reset playback.
+    if mpd_player.event_id == event_id:
+        state['playState'] = mpd_player.state()['playState']
     emit('active_live_state', state, broadcast=True)
-
-@socketio.on('admin_update_play_state')
-def handle_admin_update_play_state(data):
-    """Admin player state updated (play/pause/seek)"""
-    event_id = data.get('eventId')
-    if not event_id: return
-    
-    state = get_event_state(event_id)
-    state['playState'] = data.get('playState', {})
-    
-    emit('play_state_updated', {'eventId': event_id, 'playState': state['playState']}, broadcast=True)
 
 @socketio.on('performer_send_command')
 def handle_performer_send_command(data):
@@ -1477,8 +1580,21 @@ def handle_performer_send_command(data):
         emit('live_unauthorized', {'error': 'Invalid or expired Live PIN'}, to=request.sid)
         return
 
-    # Forward this command to all clients (including admin)
-    emit('admin_receive_command', data, broadcast=True)
+    try:
+        action = data.get('action')
+        if action == 'loadTrack':
+            performance = get_event_state(event_id).get('performance') or {}
+            track = data.get('track') or {}
+            current = mpd_player.state()
+            continuous = (current['eventId'] == event_id and
+                          mpd_player.performance_id == performance.get('id') and
+                          current.get('continuous', False))
+            load_mpd_track(event_id, performance.get('id'), track.get('id'), continuous)
+        elif action in ('play', 'pause', 'stop', 'seek'):
+            mpd_player.control(event_id, action, data.get('percentage'))
+            publish_player_state()
+    except MPDError as exc:
+        emit('player_error', {'error': str(exc)}, to=request.sid)
 
 if __name__ == '__main__':
     import argparse

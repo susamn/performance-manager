@@ -10,6 +10,8 @@ def stop_server():
     port_file = config_dir / ".port"
 
     if not pid_file.exists():
+        from mpd_player import MPDPlayer
+        MPDPlayer(config_dir).shutdown()
         print("❌ Performance Manager is not running (no PID file found)")
         return
 
@@ -49,6 +51,10 @@ def stop_server():
 
         except ProcessLookupError:
             print("❌ Process not found (may have already stopped)")
+
+        # Stop only Performance Manager's private MPD instance.
+        from mpd_player import MPDPlayer
+        MPDPlayer(config_dir).shutdown()
 
         # Clean up PID and port files
         if pid_file.exists():

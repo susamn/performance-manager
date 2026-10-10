@@ -5,11 +5,11 @@ A complete web application for managing performances at cultural events. Built w
 ## Features
 
 - **Performance Management**: Create, edit, and organize performances
-- **Media Player**: Built-in audio player with seekbar, play/pause/stop controls
+- **Media Player**: Browser controls local MPD playback on the server machine (seek/play/pause/stop)
 - **File Upload**: Support for MP3, MP4, AAC, M4A, WAV, FLAC audio formats
 - **Drag & Drop**: Reorder performances with intuitive drag and drop
 - **Keyboard Controls**: Space for play/pause, double-space for stop
-- **Audio Streaming**: Range request support for efficient audio streaming
+- **Local MPD Playback**: Original audio files decoded by MPD; browsers do not stream/play audio
 - **Data Persistence**: All data stored in `~/.config/performance-manager`
 - **Responsive Design**: Works on desktop and mobile devices
 
@@ -20,6 +20,8 @@ A complete web application for managing performances at cultural events. Built w
 ```bash
 ./quick-start.sh start
 ```
+
+Requires `mpd` with PipeWire output support installed and an active PipeWire session on the server machine. MPD starts on demand in a **separate private instance**, not your existing MPD setup. Audio comes from the server machine's speakers, even when controlling the web page remotely.
 
 This single command will:
 - Install all dependencies (frontend + backend)
@@ -70,6 +72,7 @@ performance-manager/
 │   └── package.json
 ├── backend/                 # Flask backend
 │   ├── app.py              # Main Flask application
+│   ├── mpd_player.py       # Private MPD daemon, queue, and control protocol
 │   └── requirements.txt
 └── tests/                   # Integration tests
 ```
@@ -93,9 +96,8 @@ performance-manager/
 
 1. Click on a performance to select it
 2. Click on any track to load it into the player
-3. Use player controls or keyboard shortcuts:
-   - **Space**: Play/Pause
-   - **Space x2**: Stop and reset to beginning
+3. Press Play in the browser control panel; the sound comes from the **server machine**, not the browser.
+4. Continuous Play queues tracks in performance order, repeats from the first track, and asks MPD to crossfade for 10 seconds. MPD crossfades only between tracks with compatible audio formats; we do not force resampling to preserve audio quality.
 
 ### Managing Performances
 
@@ -109,15 +111,14 @@ All data is stored in `~/.config/performance-manager/`:
 - `performances.json`: Performance metadata
 - `<performance-id>/`: Audio files for each performance
 
-## API Endpoints
+## Playback API
 
-- `GET /api/performances` - List all performances
-- `POST /api/performances` - Create new performance
-- `PUT /api/performances/<id>` - Update performance
-- `DELETE /api/performances/<id>` - Delete performance
-- `POST /api/performances/<id>/upload` - Upload track file
-- `GET /api/performances/<id>/files/<filename>` - Stream audio file
-- `POST /api/performances/reorder` - Reorder performances
+- `GET /api/events/<event_id>/player/state` - Current MPD track, position, and status
+- `POST /api/events/<event_id>/player/load` - Queue a track without starting it
+- `POST /api/events/<event_id>/player/control` - Play, pause, stop, seek, rewind
+- `POST /api/events/<event_id>/player/continuous` - Repeat queue and set MPD crossfade
+
+Mutating endpoints require the event's admin bearer token (obtained when unlocking). A validated Live PIN also permits remote playback commands over Socket.IO. The dedicated MPD config, log, and UNIX socket are in `~/.config/performance-manager/mpd/`. Playback errors appear in the player UI; startup diagnostics are in `mpd/startup.log`. The existing audio-file endpoint remains available for downloads but is not used for playback.
 
 ## Testing
 
@@ -127,6 +128,8 @@ Run the comprehensive test suite:
 cd frontend
 npm test
 ```
+
+Run backend tests with `cd backend && ../venv/bin/pytest -q`. MPD audio playback itself requires a local PipeWire session.
 
 Tests cover:
 - Component functionality
@@ -156,7 +159,8 @@ Tests cover:
 
 - Node.js 16+ (for frontend development)
 - Python 3.8+ (for backend)
-- Modern web browser with HTML5 audio support
+- MPD with PipeWire output on the machine running the backend
+- Modern browser (controls only; no browser audio required)
 
 ## Browser Compatibility
 
