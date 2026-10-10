@@ -100,7 +100,7 @@ class MPDPlayer:
             '  plugin "soxr"',
             '  quality "very high"',
             '}',
-            'audio_output {'
+            'audio_output {',
             '  type "pipewire"',
             '  name "Performance Manager"',
             '}',

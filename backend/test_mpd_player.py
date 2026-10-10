@@ -72,7 +72,7 @@ def test_private_mpd_uses_common_format_for_crossfade(monkeypatch, tmp_path):
     assert 'audio_output_format "48000:24:2"' in config
     assert 'plugin "soxr"' in config
     assert 'quality "very high"' in config
-    assert 'type "pipewire"' in config
+    assert '\naudio_output {\n  type "pipewire"\n' in config
 
 
 def test_player_api_and_live_remote(client, monkeypatch, tmp_path):
