@@ -61,6 +61,20 @@ def test_mpd_quoting():
     assert MPDPlayer._quote('/tmp/a "song".mp3') == '"/tmp/a \\"song\\".mp3"'
 
 
+def test_private_mpd_uses_common_format_for_crossfade(monkeypatch, tmp_path):
+    player = MPDPlayer(tmp_path)
+    monkeypatch.setattr(player, '_command', lambda *args: {})
+    monkeypatch.setattr('mpd_player.subprocess.Popen', lambda *args, **kwargs: None)
+    monkeypatch.setattr('mpd_player.time.sleep', lambda _: None)
+
+    player._ensure_running()
+    config = (player.directory / 'mpd.conf').read_text()
+    assert 'audio_output_format "48000:24:2"' in config
+    assert 'plugin "soxr"' in config
+    assert 'quality "very high"' in config
+    assert 'type "pipewire"' in config
+
+
 def test_player_api_and_live_remote(client, monkeypatch, tmp_path):
     import app as backend
     player = MPDPlayer(tmp_path)

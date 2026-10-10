@@ -21,7 +21,7 @@ A complete web application for managing performances at cultural events. Built w
 ./quick-start.sh start
 ```
 
-Requires `mpd` with PipeWire output support installed and an active PipeWire session on the server machine. MPD starts on demand in a **separate private instance**, not your existing MPD setup. Audio comes from the server machine's speakers, even when controlling the web page remotely.
+Requires `mpd` with PipeWire output and SoX Resampler (`soxr`) support installed, plus an active PipeWire session on the server machine. MPD starts on demand in a **separate private instance**, not your existing MPD setup. Audio comes from the server machine's speakers, even when controlling the web page remotely.
 
 This single command will:
 - Install all dependencies (frontend + backend)
@@ -97,7 +97,7 @@ performance-manager/
 1. Click on a performance to select it
 2. Click on any track to load it into the player
 3. Press Play in the browser control panel; the sound comes from the **server machine**, not the browser.
-4. Continuous Play queues tracks in performance order, repeats from the first track, and asks MPD to crossfade for 10 seconds. MPD crossfades only between tracks with compatible audio formats; we do not force resampling to preserve audio quality.
+4. Continuous Play queues tracks in performance order, repeats from the first track, and crossfades for 10 seconds. The private MPD instance converts decoded audio to 48 kHz / 24-bit stereo using high-quality SoX resampling so tracks with different formats can overlap. This uses more CPU and is not bit-perfect playback; original audio files are unchanged. Restart the app (including its private MPD daemon) after upgrading to apply this setting.
 
 ### Managing Performances
 
@@ -159,7 +159,7 @@ Tests cover:
 
 - Node.js 16+ (for frontend development)
 - Python 3.8+ (for backend)
-- MPD with PipeWire output on the machine running the backend
+- MPD with PipeWire output and SoX Resampler (`soxr`) on the machine running the backend
 - Modern browser (controls only; no browser audio required)
 
 ## Browser Compatibility

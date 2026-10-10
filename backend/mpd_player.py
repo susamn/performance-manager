@@ -93,7 +93,14 @@ class MPDPlayer:
             f'state_file {q(self.directory / "state")}',
             f'log_file {q(self.directory / "mpd.log")}',
             f'bind_to_address {q(self.socket_path)}',
-            'audio_output {',
+            # MPD can only crossfade tracks decoded to the same PCM format.
+            # Use a common high-resolution format for mixed-rate performances.
+            'audio_output_format "48000:24:2"',
+            'resampler {',
+            '  plugin "soxr"',
+            '  quality "very high"',
+            '}',
+            'audio_output {'
             '  type "pipewire"',
             '  name "Performance Manager"',
             '}',
